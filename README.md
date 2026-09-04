@@ -14,6 +14,20 @@ A sleek **web dashboard** for managing a FastAPI-powered VLESS WebSocket gateway
 
 ---
 
+## Screenshots
+
+<div align="center">
+
+<img src="assets/preview-1.png" alt="V2Leafy dashboard preview 1" width="49%">
+<img src="assets/preview-2.png" alt="V2Leafy dashboard preview 2" width="49%">
+
+<img src="assets/preview-3.png" alt="V2Leafy dashboard preview 3" width="49%">
+<img src="assets/preview-4.png" alt="V2Leafy dashboard preview 4" width="49%">
+
+</div>
+
+---
+
 ## Overview
 
 V2Leafy is one clean FastAPI application that runs on Railway and GitHub Codespaces with a single listener, one adaptive frontend, and a **WebSocket-only VLESS** proxy transport. It serves a responsive purple dashboard for client management, subscription generation, traffic monitoring, and gateway controls.
@@ -159,6 +173,7 @@ V2Leafy/
 ├── Procfile         # Compatible process command (web: python main.py)
 ├── railway.json     # Railway configuration (build, secrets, healthcheck)
 ├── .devcontainer/   # Codespaces configuration
+├── assets/          # README preview screenshots
 ├── README.md        # Setup, deployment, usage, and FAQ
 ├── LICENSE          # MIT license
 ├── .gitattributes   # LF line endings and binary asset handling
