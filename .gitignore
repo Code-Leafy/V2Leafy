@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+storage/
+.freebuff/
+.venv/
+node_modules/
