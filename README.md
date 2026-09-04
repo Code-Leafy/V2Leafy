@@ -16,7 +16,7 @@ A sleek **web dashboard** for managing a FastAPI-powered VLESS WebSocket gateway
 
 ## Overview
 
-V2Leafy is one clean FastAPI application that runs on Railway, GitHub Codespaces, and local development with a single listener, one adaptive frontend, and a **WebSocket-only VLESS** proxy transport. It serves a responsive purple dashboard for client management, subscription generation, traffic monitoring, and gateway controls.
+V2Leafy is one clean FastAPI application that runs on Railway and GitHub Codespaces with a single listener, one adaptive frontend, and a **WebSocket-only VLESS** proxy transport. It serves a responsive purple dashboard for client management, subscription generation, traffic monitoring, and gateway controls.
 
 Once the Python backend starts, it serves the full dashboard through the hosting provider’s public web service. From there you can manage clients, preview generated configs, copy subscription links, view logs, monitor usage, and control the gateway — no terminal UI required.
 
@@ -27,7 +27,7 @@ Once the Python backend starts, it serves the full dashboard through the hosting
 <details open>
 <summary><kbd>Platform Deployment Options</kbd></summary>
 
-V2Leafy supports hosted Python deployments. `railway.json` is ready for Railway (it installs `requirements.txt`, generates a `SECRET_KEY`, and starts `python main.py`). GitHub Codespaces builds from `.devcontainer` and forwards port `8080` as public. The same repository runs locally with `python main.py`.
+V2Leafy supports hosted Python deployments. `railway.json` is ready for Railway (it installs `requirements.txt`, generates a `SECRET_KEY`, and starts `python main.py`). GitHub Codespaces builds from `.devcontainer` and forwards port `8080` as public.
 
 </details>
 
@@ -57,7 +57,7 @@ On the first start, V2Leafy shows a themed setup screen that asks you to create 
 
 ### Responsive Hosted Deployment
 
-Run the same FastAPI application locally or deploy it to Railway and Codespaces. The dashboard is designed for desktop and mobile browsers, with backend-owned themes (purple on Railway, neutral grey on Codespaces) and no platform-specific UI.
+Run the same FastAPI application on Railway or GitHub Codespaces. The dashboard is designed for desktop and mobile browsers, with backend-owned themes (purple on Railway, neutral grey on Codespaces) and no platform-specific UI.
 
 <div align="center">
 
@@ -104,29 +104,6 @@ Run the same FastAPI application locally or deploy it to Railway and Codespaces.
 
 > **Tip — Codespaces settings:** from [github.com/settings/codespaces](https://github.com/settings/codespaces) you can control where your codespaces run. Scroll to **Region** at the bottom, switch it from **Automatic** to manual, and pick the closest option. It is also **recommended** to raise the **Default idle timeout** to **240 minutes** so a long-running gateway session is not stopped while you are away.
 
-### 3. Local Development
-
-From the `V2Leafy` directory:
-
-```bash
-python -m venv .venv
-```
-
-Activate the environment and install dependencies:
-
-```bash
-# macOS/Linux
-source .venv/bin/activate
-
-# Windows
-.venv\Scripts\activate
-
-pip install -r requirements.txt
-python main.py
-```
-
-Open the local URL printed by the backend. For local development, `PORT` defaults to `8080`; set `SECRET_KEY` to a stable random value if you need sessions to survive restarts.
-
 ---
 
 ## Usage
@@ -138,7 +115,7 @@ When launched, the backend serves the dashboard and uses the host-provided publi
 python main.py
 ```
 
-Then open your local or hosted dashboard URL in a browser:
+Then open your hosted dashboard URL in a browser:
 
 ```text
 https://<your-hosted-domain>/
@@ -184,6 +161,7 @@ V2Leafy/
 ├── .devcontainer/   # Codespaces configuration
 ├── README.md        # Setup, deployment, usage, and FAQ
 ├── LICENSE          # MIT license
+├── .gitattributes   # LF line endings and binary asset handling
 └── .gitignore       # Runtime and secret exclusions
 ```
 
