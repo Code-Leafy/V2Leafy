@@ -75,6 +75,8 @@ Run the same FastAPI application locally or deploy it to Railway and Codespaces.
 
 *No local installation required.*
 
+> **⭐ Recommended — quick setup:** visit **[NetLeafy](https://code-leafy.github.io/NetLeafy)** and follow its on-screen instructions to deploy V2Leafy on Railway in minutes. The manual steps below achieve the same result.
+
 1. **Fork the Repository**: Open [Code-Leafy/V2Leafy](https://github.com/Code-Leafy/V2Leafy) and click **Fork**.
 2. **Create a Railway Project**: Sign in to [Railway](https://railway.com/), click **New Project**, and choose **Deploy from GitHub repo**.
 3. **Select V2Leafy**: Authorize GitHub if requested, then select your fork of the `V2Leafy` repository.
@@ -87,6 +89,10 @@ Run the same FastAPI application locally or deploy it to Railway and Codespaces.
 
 > Railway automatically provides `PORT`. V2Leafy listens on `0.0.0.0` and uses that assigned port. Do not hard-code a production port.
 
+> **Note — redeploy after a domain change:** when you generate or change your domain in **Settings → Networking**, trigger a redeploy (**Deployments → Redeploy**) so V2Leafy picks up the new domain in generated links and subscriptions.
+
+> **Tip — server region:** you can change the Railway **region** your service runs in from the service's **Settings** page. Changing the region also triggers a redeploy.
+
 ### 2. GitHub Codespaces
 
 1. **Fork the Repository**: Fork the V2Leafy repository to your GitHub account.
@@ -95,6 +101,8 @@ Run the same FastAPI application locally or deploy it to Railway and Codespaces.
 4. **Confirm the Port**: The `.devcontainer` config forwards port `8080` as **public**; the app also self-heals the public visibility at startup.
 5. **Open the Service**: Open the forwarded public URL — the dashboard appears in the Codespaces "Ports" panel.
 6. **Create Your Password**: Complete the first-run V2Leafy password setup screen.
+
+> **Tip — Codespaces settings:** from [github.com/settings/codespaces](https://github.com/settings/codespaces) you can control where your codespaces run. Scroll to **Region** at the bottom, switch it from **Automatic** to manual, and pick the closest option. It is also **recommended** to raise the **Default idle timeout** to **240 minutes** so a long-running gateway session is not stopped while you are away.
 
 ### 3. Local Development
 
