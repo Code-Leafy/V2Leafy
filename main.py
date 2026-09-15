@@ -3529,7 +3529,7 @@ if __name__ == "__main__":
         access_log=False,
         loop=loop_impl,
         ws="websockets",
-        ws_per_message_deflate=True,
+        ws_per_message_deflate=False,
         ws_max_size=MAX_WS_FRAME_BYTES * 2,
         timeout_keep_alive=TCP_IDLE_TIMEOUT + 30,
         server_header=False,
