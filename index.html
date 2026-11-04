@@ -1,0 +1,2099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{APP_TITLE}}</title>
+    <meta name="theme-color" content="{{THEME_ACCENT}}">
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23{{THEME_ACCENT_URL}}'%3E%3Cpath d='M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/static/vendor/fonts/fonts.css" integrity="sha384-1YaEs9QmiM1pCGyQWzfPxbj44relzAZqGyr0M5SHcOcpF+kbMwMPZGv6dMQ8gtIX" crossorigin="anonymous">
+    <link rel="stylesheet" href="/static/vendor/fontawesome/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    <script defer src="/static/vendor/js/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous"></script>
+    <style>
+        :root {
+            --bg-base: #09090b; --bg-panel: #121214; --bg-hover: #1f1f22; --bg-active: #27272a;
+            --border: rgba(255, 255, 255, 0.08); --border-hover: rgba(255, 255, 255, 0.15);
+            --text-main: #fafafa; --text-muted: #a1a1aa;
+            --accent: {{THEME_ACCENT}}; --accent-hover: {{THEME_ACCENT_HOVER}}; --accent-bg: {{THEME_ACCENT_BG}};
+            --success: {{THEME_SUCCESS}};
+            --danger: #ef4444; --danger-bg: rgba(239, 68, 68, 0.12);
+            --warning: #f59e0b; --warning-bg: rgba(245, 158, 11, 0.12);
+            --info: #3b82f6; --info-bg: rgba(59, 130, 246, 0.12);
+            --purple: {{THEME_ACCENT}}; --purple-bg: {{THEME_ACCENT_BG}};
+            --radius-lg: 16px; --radius-md: 12px; --radius-sm: 8px;
+            --transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+        ::selection { background: {{THEME_SELECTION}}; color: #fff; }
+        input, textarea, select, .mono, pre, code, #log-output, td, .form-label, th, p { user-select: text !important; -webkit-user-select: text !important; }
+        .btn, .nav-item, .custom-checkbox, .switch { user-select: none !important; -webkit-user-select: none !important; }
+        button:focus-visible, a:focus-visible, .nav-item:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--border-hover); outline-offset: 2px; }
+
+        body { background-color: var(--bg-base); color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; display: flex; height: 100vh; min-height: 100vh; width: 100vw; overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+        h1, h2, h3, h4, h5 { font-weight: 700; letter-spacing: -0.01em; color: var(--text-main); }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        .text-accent { color: var(--accent) !important; }
+        .text-info { color: var(--info) !important; }
+        .text-warning { color: var(--warning) !important; }
+        .text-danger { color: var(--danger) !important; }
+        .text-purple { color: var(--purple) !important; }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+
+        #loader { position: fixed; inset: 0; background: var(--bg-base); z-index: 99999; display: flex; overflow: hidden; transition: opacity 0.4s ease, visibility 0.4s; }
+        #loader-sidebar { width: 260px; background-color: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
+        #loader-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        #loader-topbar { display: none; } /* dashboard tab on desktop has no top bar */
+        #loader-inner { width: 100%; flex: 1; min-height: 0; overflow: hidden; padding: 24px; display: flex; flex-direction: column; gap: 16px; position: relative; }
+        .skel-sidebar-logo { height: 60px; display: flex; align-items: center; gap: 12px; padding: 0 24px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+        .skel-sidebar-nav { flex: 1; overflow: hidden; padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; }
+        .skel-nav-item { display: flex; align-items: center; gap: 12px; padding: 16px 12px; border-radius: var(--radius-sm); background: var(--bg-hover); flex-shrink: 0; }
+        .skel-sidebar-footer { padding: 12px 14px; flex-shrink: 0; border-top: 1px solid var(--border); }
+        .skel { background: linear-gradient(90deg, var(--bg-hover) 25%, var(--bg-active) 50%, var(--bg-hover) 75%); background-size: 200% 100%; animation: shimmer 1.4s ease infinite; border-radius: 10px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .skel-metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .skel-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.02); }
+        .skel-card .skel-t { height: 15px; border-radius: 6px; }
+        .skel-card .skel-v { height: 34px; border-radius: 8px; }
+        .skel-sub2 { display: none; }
+        .skel-row { height: 14px; margin-bottom: 10px; }
+        .skel-row.w60 { width: 60%; } .skel-row.w40 { width: 40%; } .skel-row.w80 { width: 80%; }
+        .skel-line { height: 10px; margin: 8px 0; opacity: 0.7; }
+        .skel-traffic-grid { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(330px, 1fr); grid-template-rows: minmax(0, 1fr); gap: 16px; flex: 1; min-height: 0; flex-shrink: 1; }
+        .skel-chart { flex: 1; min-height: 0; border-radius: 12px; }
+        #skel-bn { display: none; }
+        .skel-bn-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+        .skel-panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.02); }
+        .skel-panel-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; min-height: 56px; }
+        .skel-panel-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; flex: 1; min-height: 0; }
+        .skel-btn { height: 38px; border-radius: var(--radius-sm); flex-shrink: 0; }
+
+
+        .bottom-nav { display: none; }
+        .speed-badge { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: var(--bg-hover); color: var(--text-muted); margin-top: 6px; white-space: nowrap; }
+        .speed-badge .dl { color: var(--accent); } .speed-badge .ul { color: var(--info); }
+        .conn-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: var(--transition); }
+        .conn-row:hover { background: rgba(255,255,255,0.03); }
+        .conn-row:last-child { border-bottom: none; }
+        .conn-flag { font-size: 1.1rem; width: 24px; text-align: center; flex-shrink: 0; }
+        .conn-main { flex: 1; min-width: 0; }
+        .conn-title { font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .conn-sub { font-size: 0.7rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+        .conn-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; }
+        .uptime-bar { height: 8px; background: var(--bg-hover); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+        .uptime-fill { height: 100%; background: var(--success); border-radius: 4px; transition: width 0.6s ease; }
+        .auth-error { display: none; margin: 12px 24px 20px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--danger-bg); border: 1px solid var(--danger); color: var(--danger); font-size: 0.8rem; font-weight: 600; line-height: 1.45; }
+        .auth-error::before { content: '\f06a'; font-family: 'Font Awesome 6 Free'; font-weight: 900; margin-right: 8px; }
+
+        .sidebar { width: 260px; background-color: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; transition: var(--transition); flex-shrink: 0; }
+        .logo-box { height: 60px; display: flex; align-items: center; gap: 12px; padding: 0 24px; font-size: 1.15rem; font-weight: 800; color: #fff; flex-shrink: 0; border-bottom: 1px solid var(--border); background: var(--bg-base); }
+        .logo-box svg { width: 26px; height: 26px; color: var(--accent); }
+        #auth-overlay .logo-box svg { width: 40px; height: 40px; }
+        .nav-menu { flex: 1; overflow-y: auto; padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; }
+        .nav-label { font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; letter-spacing: 0.08em; margin: 16px 0 8px 12px; }
+        .nav-item { padding: 16px 12px; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; gap: 12px; color: var(--text-muted); font-weight: 600; transition: var(--transition); font-size: 0.85rem; }
+        .nav-item i { font-size: 1.05rem; width: 20px; text-align: center; pointer-events: none; transition: var(--transition); }
+        .nav-item:hover { background-color: var(--bg-hover); color: var(--text-main); }
+        .nav-item.active { background-color: var(--accent-bg); color: var(--accent); }
+        .nav-item.active i { color: var(--accent); }
+        .sidebar-footer { padding: 12px 14px; flex-shrink: 0; border-top: 1px solid var(--border); }
+        .sidebar-footer .btn-logout { width: 100%; }
+        .sidebar-footer .github-link { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 12px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+        .sidebar-footer .github-link i { font-size: 0.9rem; color: var(--accent); transition: color 0.2s; }
+        .sidebar-footer .github-link:hover { color: var(--text-main); }
+        .sidebar-footer .github-link:hover i { color: var(--accent); }
+
+        .app-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg-base); height: 100vh; overflow: hidden; }
+        .topbar { height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background-color: var(--bg-base); z-index: 50; flex-shrink: 0; }
+        .topbar.hidden { display: none; }
+        .mini-stats { display: flex; gap: 24px; font-weight: 600; font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; }
+        .mini-stat-item { display: flex; align-items: center; gap: 8px; }
+        .content-area { flex: 1; padding: 24px; display: flex; flex-direction: column; overflow: hidden; gap: 16px; }
+
+        .tab-view { display: none; flex-direction: column; flex: 1; min-height: 0; gap: 16px; animation: slideFadeUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; overflow: hidden; }
+        .tab-view.active { display: flex; }
+        @keyframes slideFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .header-section { flex-shrink: 0; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
+        .header-section h2 { font-size: 1.25rem; }
+        .header-section p { color: var(--text-muted); font-weight: 500; font-size: 0.82rem; margin-top: 4px; }
+
+        .btn, .btn-icon, .chart-filter-btn { cursor: pointer; }
+        .btn { background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); padding: 8px 16px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 600; transition: var(--transition); display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; box-shadow: 0 1px 2px rgba(0,0,0,0.2); height: 38px; }
+        .btn:hover:not(:disabled) { background: var(--bg-active); border-color: var(--border-hover); transform: translateY(-1px); }
+        .btn:active:not(:disabled) { transform: translateY(1px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: var(--accent); color: #000; border: none; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
+        .btn-primary:hover:not(:disabled) { background: var(--accent-hover); color: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+        .btn-danger { background: var(--danger-bg); color: var(--danger); border: none; }
+        .btn-danger:hover:not(:disabled) { background: var(--danger); color: #fff; }
+        .btn-icon { padding: 6px; width: 38px; height: 38px; border-radius: var(--radius-sm); border: 1px solid transparent; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-hover); color: var(--text-muted); transition: var(--transition); box-shadow: none; }
+        .btn-icon:hover { background: var(--bg-active); color: var(--text-main); transform: translateY(0); }
+        .btn-icon.btn-danger { background: transparent; color: var(--danger); }
+        .btn-icon.btn-danger:hover { background: var(--danger-bg); }
+
+        .panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.02); }
+        .panel-full { flex: 1; min-height: 0; }
+        .panel-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: rgba(255,255,255,0.02); min-height: 56px; }
+        .panel-title { font-size: 0.95rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        .panel-body { padding: 20px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
+        .panel-body-unpadded { padding: 0; flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; flex-shrink: 0; }
+        .grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; flex-shrink: 0; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; flex-shrink: 0; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; flex: 1; min-height: 0; flex-shrink: 1; }
+        .grid-traffic { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(330px, 1fr); gap: 16px; flex: 1; min-height: 0; flex-shrink: 1; }
+        .dash-side { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+        .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; flex-shrink: 0; }
+
+        .metric-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.02); position: relative; overflow: hidden; }
+        .metric-title { font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: space-between; align-items: center; z-index: 2; }
+        .metric-val { font-size: 1.6rem; font-weight: 800; color: var(--text-main); display: flex; align-items: baseline; gap: 8px; letter-spacing: -0.02em; z-index: 2; }
+        .metric-sub { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+        .form-label { color: var(--text-muted); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+        .form-control { width: 100%; padding: 8px 12px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-main); border-radius: var(--radius-sm); font-size: 0.85rem; transition: var(--transition); font-family: inherit; font-weight: 500; height: 38px; }
+        textarea.form-control { height: auto; }
+        .form-control:focus { border-color: var(--border-hover); box-shadow: 0 0 0 1px rgba(255,255,255,0.08); background: var(--bg-active); }
+        input.form-control:read-only, input.form-control:disabled, textarea.form-control:read-only, textarea.form-control:disabled { background: var(--bg-base); color: var(--text-muted); cursor: not-allowed; opacity: 1; border-color: transparent; }
+        select.form-control { -webkit-appearance: none; appearance: none; cursor: pointer; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 14px center; background-size: 14px; padding-right: 36px; }
+        select.form-control:not(:disabled) { color: var(--text-main) !important; background-color: var(--bg-hover) !important; }
+        select.form-control option { background-color: #1f1f22; color: #fafafa; }
+
+        .input-group { display: flex; gap: 8px; }
+        .switch { position: relative; display: inline-block; width: 38px; height: 20px; flex-shrink: 0; cursor: pointer; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; inset: 0; background-color: var(--bg-hover); border: 1px solid var(--border); transition: 0.3s ease; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: var(--text-muted); border-radius: 50%; transition: 0.3s ease; }
+        input:checked + .slider { background-color: var(--accent); border-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(18px); background-color: #fff; }
+
+        .table-wrap { flex: 1; overflow-y: auto; overflow-x: auto; background: var(--bg-panel); min-height: 0; }
+        table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; font-size: 0.85rem; }
+        th { position: sticky; top: 0; background: var(--bg-hover); color: var(--text-muted); font-weight: 700; font-size: 0.68rem; padding: 10px 16px; text-transform: uppercase; letter-spacing: 0.05em; z-index: 10; border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 var(--border); }
+        td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 500; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255, 255, 255, 0.03); }
+
+        .tag { padding: 4px 10px; border-radius: 6px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; display: inline-flex; align-items: center; letter-spacing: 0.05em; }
+        .tag-green { background: var(--accent-bg); color: var(--accent); }
+        .tag-red { background: var(--danger-bg); color: var(--danger); }
+        .tag-blue { background: var(--info-bg); color: var(--info); }
+        .tag-purple { background: var(--purple-bg); color: var(--purple); }
+        .tag-warn { background: var(--warning-bg); color: var(--warning); }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 1000; opacity: 0; transition: opacity 0.25s; padding: 20px; }
+        .modal-overlay.show { display: flex; opacity: 1; }
+        .modal { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md); width: 100%; max-width: 600px; transform: scale(0.95) translateY(15px); transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; max-height: 100%; box-shadow: 0 24px 48px rgba(0,0,0,0.6); }
+        .modal-overlay.show .modal { transform: scale(1) translateY(0); }
+        .modal-header { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: rgba(255,255,255,0.02); border-radius: var(--radius-md) var(--radius-md) 0 0; }
+        .modal-body { padding: 24px; overflow-y: auto; flex: 1; gap: 16px; display: flex; flex-direction: column; }
+        .modal-footer { padding: 18px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0; background: rgba(255,255,255,0.01); border-radius: 0 0 var(--radius-md) var(--radius-md); }
+
+        .chart-wrapper { position: relative; width: 100%; height: 100%; min-height: 0; min-width: 0; flex: 1; display: flex; align-items: center; justify-content: center; }
+        .terminal { background: #050505; color: #a1a1aa; padding: 20px; font-size: 0.8rem; line-height: 1.6; flex: 1; overflow-y: auto; border-radius: 0 0 var(--radius-md) var(--radius-md); user-select: text; white-space: pre-wrap; font-family: 'JetBrains Mono', monospace; }
+
+        .toast-box { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 12px; z-index: 9999; pointer-events: none; }
+        .toast { background: var(--bg-panel); border: 1px solid var(--border); padding: 14px 20px; border-radius: var(--radius-md); display: flex; align-items: center; gap: 12px; box-shadow: 0 12px 24px rgba(0,0,0,0.4); font-weight: 600; font-size: 0.85rem; pointer-events: auto; border-left: 4px solid var(--accent); animation: slideFadeUp 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; color: var(--text-main); }
+
+        .qr-wrapper { background: #fff; padding: 20px; border-radius: var(--radius-sm); display: inline-block; border: 4px solid var(--bg-hover); margin: 0 auto; }
+
+        .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--border); gap: 16px; }
+        .settings-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .settings-row:first-child { padding-top: 0; }
+        .settings-info h4 { font-size: 0.85rem; margin-bottom: 4px; color: var(--text-main); }
+        .settings-info p { font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; }
+
+        .mobile-toggle { display: none; background: none; border: none; color: var(--text-main); font-size: 1.2rem; cursor: pointer; padding: 4px; }
+        .topbar-logout { display: none; }
+
+        .sublab-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 480px); gap: 20px; flex: 1; min-height: 0; flex-shrink: 1; }
+        .sublab-editor { display: flex; flex-direction: column; gap: 16px; min-height: 0; padding: 0 4px 0 0; }
+        .sublab-preview { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+
+        .phone-mockup-wrapper { display: flex; justify-content: center; overflow: hidden; flex: 1; min-height: 0; padding: 10px; }
+        .phone-mockup { background: #0a0a0c; border: 2px solid rgba(255,255,255,0.08); border-radius: 40px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 24px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04); width: 100%; max-width: 100%; height: 100%; position: relative; overflow: hidden; }
+        .phone-notch { width: 130px; height: 26px; background: #0a0a0c; border-radius: 0 0 16px 16px; position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 10; }
+        .phone-screen { flex: 1; width: 100%; background: #111113; border-radius: 38px; display: flex; flex-direction: column; padding-top: 36px; min-height: 0; overflow: hidden; border: 8px solid #0a0a0c; }
+        .phone-config-list { flex: 1; overflow-y: auto; padding: 10px 12px 26px; display: flex; flex-direction: column; gap: 8px; }
+        .phone-config-list::-webkit-scrollbar { width: 2px; }
+        .phone-config-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+
+        .phone-item { position: relative; background: #1c1c1f; border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: default; border: 1px solid rgba(255,255,255,0.04); transition: var(--transition); }
+        .phone-item:hover { background: #222225; border-color: rgba(255,255,255,0.1); }
+        .phone-item.info-item { background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(59,130,246,0.04)); border-color: rgba(139,92,246,0.2); }
+        .phone-item-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.85rem; background: rgba(0,0,0,0.2); }
+        .phone-item-body { flex: 1; min-width: 0; }
+        .phone-item-name { font-size: 0.75rem; font-weight: 700; color: #e4e4e7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .phone-item-sub { font-size: 0.65rem; color: #71717a; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .phone-item-action { margin-left: auto; opacity: 0; transition: var(--transition); }
+        .phone-item:hover .phone-item-action { opacity: 1; }
+
+        .sub-entry { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px; transition: var(--transition); }
+        .sub-entry:hover { border-color: var(--border-hover); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .sub-entry-controls { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; padding-top: 6px; }
+        .sub-entry-controls .btn-icon { width: 26px; height: 22px; padding: 0; font-size: 0.6rem; color: var(--text-muted); }
+        .sub-entry-controls .btn-icon:hover:not(:disabled) { color: var(--accent); }
+        .sub-entry-controls .btn-icon:disabled { opacity: 0.25; cursor: not-allowed; }
+        .sub-entry-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+        .sub-entry-type { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .ph-chip { font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; color: var(--info); background: var(--info-bg); padding: 11px 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; transition: var(--transition); user-select: none; text-align: center; font-weight: 600; }
+        .ph-chip:hover { border-color: var(--info); background: rgba(59,130,246,0.2); transform: translateY(-1px); }
+
+        .collapsible-header { cursor: pointer; }
+        .collapsible-header:hover { background: rgba(255,255,255,0.03); }
+        .collapsible-body { transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.2s ease; overflow: hidden; }
+        .collapsible-body.collapsed { max-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; opacity: 0; }
+        .collapse-icon.collapsed { transform: rotate(180deg); }
+
+        .info-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+        .info-row:last-child { border-bottom: none; }
+        .info-row .k { color: var(--text-muted); font-weight: 600; }
+        .info-row .v { font-weight: 700; word-break: break-all; text-align: right; }
+
+        .traffic-totals { display: flex; align-items: center; gap: 14px; font-size: 0.72rem; color: var(--text-muted); font-weight: 600; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+        .traffic-totals span { display: inline-flex; align-items: center; gap: 5px; }
+        .traffic-totals b { color: var(--text-main); font-weight: 700; }
+        .sub-entry { position: relative; }
+        #sub-entries-list .sub-entry { animation: entryIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: calc(var(--i, 0) * 40ms); }
+        @keyframes entryIn { from { opacity: 0; transform: translateY(6px); } }
+
+        .phone-item { position: relative; }
+
+        @media (max-width: 1280px) { .content-area { padding: 16px; } #loader-inner { padding: 16px; } }
+        @media (max-width: 1024px) {
+            body { height: auto; min-height: 100vh; overflow-x: hidden; overflow-y: auto; padding-bottom: 68px; }
+            .app-wrapper { height: auto; min-height: 100vh; overflow: visible; }
+            .content-area { height: auto; overflow: visible; }
+            .tab-view { height: auto; overflow: visible; }
+            .grid-4, .grid-3, .grid-6 { grid-template-columns: repeat(2, 1fr); }
+            .grid-traffic { grid-template-columns: 1fr; }
+            .skel-traffic-grid { grid-template-columns: 1fr; grid-template-rows: none; flex: none; }
+            .skel-chart { min-height: 150px; }
+            #loader { flex-direction: column; }
+            #loader-topbar { display: flex; height: 60px; border-bottom: 1px solid var(--border); align-items: center; gap: 14px; padding: 0 24px; flex-shrink: 0; background-color: var(--bg-base); }
+            #loader-inner { overflow-y: auto; padding-bottom: 8px; }
+            #skel-bn { display: flex; }
+            .grid-1-2 { grid-template-columns: 1fr; }
+            .sidebar { position: fixed; left: -260px; top: 0; bottom: 0; height: 100vh; box-shadow: 10px 0 30px rgba(0,0,0,0.6); }
+            .sidebar.open { left: 0; }
+            .topbar-logout { display: inline-flex; }
+            .topbar { display: flex !important; }
+            .grid-3 { grid-auto-rows: auto; }
+            .grid-3 .panel-body, .grid-2 .panel-body { overflow: visible; }
+            .grid-3 .chart-wrapper { min-height: 240px; }
+            .mini-stats { display: none !important; }
+            .content-area { padding: 16px; }
+            .bottom-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: var(--bg-panel); border-top: 1px solid var(--border); z-index: 200; }
+            .bottom-nav .bn-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--text-muted); font-size: 0.6rem; font-weight: 700; cursor: pointer; transition: var(--transition); }
+            .bottom-nav .bn-item i { font-size: 1.05rem; }
+            .bottom-nav .bn-item.active { color: var(--accent); }
+            .skel-metric-grid { grid-template-columns: repeat(2, 1fr); }
+            #loader-sidebar { display: none; }
+        }
+        @media (max-width: 600px) {
+            .grid-4, .grid-3, .grid-6, .grid-2, .form-grid, .grid-traffic { grid-template-columns: 1fr; }
+            .skel-metric-grid { grid-template-columns: 1fr; }
+            .skel-chart { min-height: 240px; }
+            .skel-card .skel-v { height: 31px; }
+            .skel-panel-body { padding: 16px; }
+            .header-section { flex-direction: column; align-items: flex-start; }
+            .modal-tabs { overflow-x: auto; white-space: nowrap; }
+            .content-area { padding: 12px; }
+            .panel-header { padding: 14px 16px; }
+            .panel-body { padding: 16px; overflow: visible; }
+            .table-wrap { overflow-x: auto; }
+            .sublab-layout { grid-template-columns: 1fr; }
+            .metric-val { font-size: 1.5rem; }
+            .phone-mockup-wrapper { min-height: 500px; flex: none; }
+            .grid-1-2 { height: auto !important; grid-auto-rows: 300px; }
+            .chart-wrapper { height: 240px; flex: none; }
+            .terminal { min-height: 320px; }
+            .topbar { padding: 0 12px; }
+            #loader-topbar { padding: 0 12px; }
+            #loader-inner { padding: 12px; }
+            .traffic-totals { gap: 8px; }
+            .modal-overlay { padding: 12px; align-items: flex-start; overflow-y: auto; }
+            .modal { max-height: none; }
+        }
+        @media (max-width: 524px) {
+            .skel-sub2 { display: block; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loader" aria-label="Loading">
+        <aside id="loader-sidebar">
+            <div class="skel-sidebar-logo">
+                <div class="skel" style="width:26px; height:26px; border-radius:8px;"></div>
+                <div class="skel" style="width:110px; height:18px; border-radius:6px;"></div>
+            </div>
+            <div class="skel-sidebar-nav">
+                <div class="skel" style="width:80px; height:10px; margin:16px 0 8px 12px;"></div>
+                <div class="skel-nav-item"><div class="skel" style="width:20px; height:17px; border-radius:5px; flex-shrink:0;"></div><div class="skel" style="flex:1; height:20px; max-width:110px; border-radius:6px;"></div></div>
+                <div class="skel-nav-item"><div class="skel" style="width:20px; height:17px; border-radius:5px; flex-shrink:0;"></div><div class="skel" style="flex:1; height:20px; max-width:110px; border-radius:6px;"></div></div>
+                <div class="skel" style="width:80px; height:10px; margin:16px 0 8px 12px;"></div>
+                <div class="skel-nav-item"><div class="skel" style="width:20px; height:17px; border-radius:5px; flex-shrink:0;"></div><div class="skel" style="flex:1; height:20px; max-width:110px; border-radius:6px;"></div></div>
+                <div class="skel-nav-item"><div class="skel" style="width:20px; height:17px; border-radius:5px; flex-shrink:0;"></div><div class="skel" style="flex:1; height:20px; max-width:110px; border-radius:6px;"></div></div>
+                <div class="skel" style="width:80px; height:10px; margin:16px 0 8px 12px;"></div>
+                <div class="skel-nav-item"><div class="skel" style="width:20px; height:17px; border-radius:5px; flex-shrink:0;"></div><div class="skel" style="flex:1; height:20px; max-width:110px; border-radius:6px;"></div></div>
+            </div>
+            <div class="skel-sidebar-footer">
+                <div class="skel skel-btn" style="width:100%;"></div>
+                <div class="skel" style="width:130px; height:10px; margin:14px auto 0;"></div>
+            </div>
+        </aside>
+        <div id="loader-main">
+            <div id="loader-topbar">
+                <div class="skel" style="width:25px; height:25px; border-radius:6px; flex-shrink:0;"></div>
+                <div class="skel" style="width:128px; height:17px; border-radius:6px;"></div>
+            </div>
+            <div id="loader-inner">
+            <div style="margin-bottom:4px;">
+                <div class="skel" style="height:25px; width:38%; border-radius:6px; margin-bottom:4px;"></div>
+                <div class="skel" style="height:17px; width:60%; opacity:0.7; border-radius:6px;"></div>
+                <div class="skel skel-sub2" style="height:17px; width:70%; opacity:0.7; border-radius:6px;"></div>
+            </div>
+            <div class="skel-metric-grid">
+                <div class="skel-card"><div class="skel skel-t" style="width:55%;"></div><div class="skel skel-v" style="width:85%;"></div></div>
+                <div class="skel-card"><div class="skel skel-t" style="width:55%;"></div><div class="skel skel-v" style="width:85%;"></div></div>
+                <div class="skel-card"><div class="skel skel-t" style="width:55%;"></div><div class="skel skel-v" style="width:85%;"></div></div>
+                <div class="skel-card"><div class="skel skel-t" style="width:55%;"></div><div class="skel skel-v" style="width:85%;"></div></div>
+            </div>
+            <div class="skel-traffic-grid">
+                <div class="skel-panel">
+                    <div class="skel-panel-head">
+                        <div class="skel" style="width:18px; height:18px; border-radius:6px;"></div>
+                        <div class="skel" style="width:150px; height:20px; border-radius:6px;"></div>
+                        <div style="flex:1;"></div>
+                        <div class="skel" style="width:150px; height:16px; border-radius:6px; opacity:0.7;"></div>
+                    </div>
+                    <div class="skel-panel-body" style="padding:12px;">
+                        <div class="skel skel-chart"></div>
+                    </div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:16px; min-height:0;">
+                    <div class="skel-panel" style="flex-shrink:0;">
+                        <div class="skel-panel-head">
+                            <div class="skel" style="width:18px; height:18px; border-radius:6px;"></div>
+                            <div class="skel" style="width:140px; height:20px; border-radius:6px;"></div>
+                        </div>
+                        <div class="skel-panel-body" style="flex:none; gap:12px; padding:16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:11px;">
+                                <div class="skel" style="width:110px; height:19px; border-radius:6px;"></div>
+                                <div class="skel" style="width:64px; height:22px; border-radius:999px; flex-shrink:0;"></div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:11px;">
+                                <div class="skel" style="width:150px; height:19px; border-radius:6px;"></div>
+                                <div class="skel" style="width:28px; height:19px; border-radius:6px;"></div>
+                            </div>
+                            <div style="display:flex; gap:12px;">
+                                <div class="skel skel-btn" style="flex:1;"></div>
+                                <div class="skel skel-btn" style="flex:1;"></div>
+                                <div class="skel skel-btn" style="flex:1;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="skel-panel">
+                        <div class="skel-panel-head">
+                            <div class="skel" style="width:18px; height:18px; border-radius:6px;"></div>
+                            <div class="skel" style="width:140px; height:20px; border-radius:6px;"></div>
+                        </div>
+                        <div class="skel-panel-body" style="flex:none; gap:12px;">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div class="skel" style="width:55px; height:18px; border-radius:6px;"></div>
+                                    <div class="skel" style="width:36px; height:18px; border-radius:6px;"></div>
+                                </div>
+                                <div class="skel" style="height:8px; border-radius:4px; margin-top:8px; opacity:0.55;"></div>
+                            </div>
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div class="skel" style="width:95px; height:18px; border-radius:6px;"></div>
+                                    <div class="skel" style="width:80px; height:18px; border-radius:6px;"></div>
+                                </div>
+                                <div class="skel" style="height:8px; border-radius:4px; margin-top:8px; opacity:0.55;"></div>
+                            </div>
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div class="skel" style="width:55px; height:18px; border-radius:6px;"></div>
+                                    <div class="skel" style="width:36px; height:18px; border-radius:6px;"></div>
+                                </div>
+                                <div class="skel" style="height:8px; border-radius:4px; margin-top:8px; opacity:0.55;"></div>
+                            </div>
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div class="skel" style="width:130px; height:18px; border-radius:6px;"></div>
+                                    <div class="skel" style="width:36px; height:18px; border-radius:6px;"></div>
+                                </div>
+                                <div class="skel" style="height:8px; border-radius:4px; margin-top:8px; opacity:0.55;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+        <div id="skel-bn">
+            <div class="skel-bn-item"><div class="skel" style="width:17px; height:17px; border-radius:5px;"></div><div class="skel" style="width:44px; height:8px; border-radius:4px;"></div></div>
+            <div class="skel-bn-item"><div class="skel" style="width:17px; height:17px; border-radius:5px;"></div><div class="skel" style="width:44px; height:8px; border-radius:4px;"></div></div>
+            <div class="skel-bn-item"><div class="skel" style="width:17px; height:17px; border-radius:5px;"></div><div class="skel" style="width:44px; height:8px; border-radius:4px;"></div></div>
+            <div class="skel-bn-item"><div class="skel" style="width:17px; height:17px; border-radius:5px;"></div><div class="skel" style="width:44px; height:8px; border-radius:4px;"></div></div>
+            <div class="skel-bn-item"><div class="skel" style="width:17px; height:17px; border-radius:5px;"></div><div class="skel" style="width:44px; height:8px; border-radius:4px;"></div></div>
+        </div>
+    </div>
+
+    <div id="auth-overlay" class="modal-overlay" style="display:none; opacity:1; z-index:100000; background: var(--bg-base); flex-direction:column; justify-content:center; align-items:center;">
+        <div class="logo-box" style="margin-bottom:24px; border:none; background:transparent; padding:0;">
+            <svg class="logo-leaf" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" fill="none"/></svg>
+            <span style="font-size:1.8rem; font-weight:800; color:#fff;">{{APP_TITLE}}<span style="color:var(--text-muted); font-weight:500;">Panel</span></span>
+        </div>
+        <div class="modal show" style="max-width: 420px; width: 100%; margin:0 20px; position:relative; transform:none; box-shadow:0 24px 60px rgba(0,0,0,0.8);">
+            <div class="modal-header" style="justify-content:center; padding:20px;"><div class="panel-title" id="auth-title" style="font-size:1.1rem;"><i class="fa-solid fa-lock text-accent"></i> Authentication Required</div></div>
+            <div class="modal-body" id="auth-body" style="padding:24px;"></div>
+            <div class="auth-error" id="auth-error"></div>
+        </div>
+    </div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="logo-box">
+            <svg class="logo-leaf" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" fill="none"/></svg>
+            {{APP_TITLE}}<span style="color:var(--text-muted); font-weight:500;">Panel</span>
+        </div>
+        <div class="nav-menu">
+            <div class="nav-label">Core Analytics</div>
+            <div class="nav-item active" data-action="switchTab" data-tab="dashboard"><i class="fa-solid fa-chart-pie"></i> Dashboard</div>
+            <div class="nav-item" data-action="switchTab" data-tab="analytics"><i class="fa-solid fa-chart-line"></i> Analytics</div>
+            <div class="nav-label">Traffic Routing</div>
+            <div class="nav-item" data-action="switchTab" data-tab="clients"><i class="fa-solid fa-users"></i> Client Profiles</div>
+            <div class="nav-item" data-action="switchTab" data-tab="sublab"><i class="fa-solid fa-flask"></i> Subscription Lab</div>
+            <div class="nav-label">System</div>
+            <div class="nav-item" data-action="switchTab" data-tab="logs"><i class="fa-solid fa-terminal"></i> Console Logs</div>
+        </div>
+        <div class="sidebar-footer">
+            <button class="btn btn-danger btn-logout" data-action="doLogout"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+            <a class="github-link" href="https://github.com/Code-Leafy/V2Leafy" target="_blank" rel="noopener"><i class="fa-brands fa-github"></i> V2Leafy on GitHub</a>
+        </div>
+    </aside>
+
+    <main class="app-wrapper">
+        <header class="topbar hidden" id="main-topbar">
+            <button class="mobile-toggle" data-action="toggleSidebar"><i class="fa-solid fa-bars"></i></button>
+            <div class="mini-stats" id="mini-stats">
+                <div class="mini-stat-item" style="color:var(--accent)"><i class="fa-solid fa-arrow-down-long"></i> <span id="m-rx-mini">0.00</span> GB</div>
+                <div class="mini-stat-item" style="color:var(--info)"><i class="fa-solid fa-arrow-up-long"></i> <span id="m-tx-mini">0.00</span> GB</div>
+                <div class="mini-stat-item" style="color:var(--purple)"><i class="fa-solid fa-gauge-high"></i> <span id="m-speed-mini">0 / 0</span> Mbps</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px;">
+                <button class="mobile-toggle topbar-logout" data-action="doLogout" title="Logout" style="background:none; border:none; color:var(--text-muted); font-size:1.05rem; cursor:pointer; padding:4px;"><i class="fa-solid fa-right-from-bracket"></i></button>
+                <div style="display:flex; align-items:center; gap:8px; font-size:0.78rem; font-weight:700; font-family:'JetBrains Mono',monospace;">
+                    <span id="gw-dot" style="width:8px; height:8px; border-radius:50%; background:var(--accent); display:inline-block; flex-shrink:0;"></span>
+                    <span id="gw-label" style="color:var(--accent);">GATEWAY RUNNING</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="content-area">
+
+            <div id="tab-dashboard" class="tab-view active">
+                <div class="header-section"><div><h2>System Dashboard</h2><p>Live traffic, gateway status and control. Deep telemetry lives in the Analytics tab.</p></div></div>
+
+                <div class="grid-4">
+                    <div class="metric-card"><div class="metric-title">Download <i class="fa-solid fa-arrow-down-long" style="color:var(--accent)"></i></div><div class="metric-val mono" id="m-rx">0.00 <span class="metric-sub">GB</span></div></div>
+                    <div class="metric-card"><div class="metric-title">Upload <i class="fa-solid fa-arrow-up-long" style="color:var(--info)"></i></div><div class="metric-val mono" id="m-tx">0.00 <span class="metric-sub">GB</span></div></div>
+                    <div class="metric-card"><div class="metric-title">Speed (DL/UL) <i class="fa-solid fa-gauge-high" style="color:var(--purple)"></i></div><div class="metric-val mono" id="m-speed">0.0 <span class="metric-sub">/ 0.0 Mbps</span></div></div>
+                    <div class="metric-card"><div class="metric-title">Peak Speed <i class="fa-solid fa-bolt" style="color:var(--warning)"></i></div><div class="metric-val mono" id="d-peak">0.0 <span class="metric-sub">Mbps</span></div></div>
+                </div>
+
+                <div class="grid-traffic">
+                    <div class="panel" style="min-height:0;">
+                        <div class="panel-header"><div class="panel-title"><i class="fa-solid fa-wave-square text-accent"></i> Global Traffic Flow</div>
+                            <div class="traffic-totals"><span><i class="fa-solid fa-arrow-down-long" style="color:var(--accent);"></i> <b id="t-rx">0.00</b> GB</span><span><i class="fa-solid fa-arrow-up-long" style="color:var(--info);"></i> <b id="t-tx">0.00</b> GB</span></div>
+                        </div>
+                        <div class="panel-body-unpadded" style="padding: 12px;">
+                            <div class="chart-wrapper" style="padding: 0;"><canvas id="chart-traffic"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="dash-side">
+                        <div class="panel" style="flex-shrink:0;">
+                            <div class="panel-header"><div class="panel-title"><i class="fa-solid fa-power-off text-info"></i> Gateway Control</div></div>
+                            <div class="panel-body" style="gap: 12px; padding: 16px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;"><span style="color:var(--text-muted); font-weight:600; font-size:0.85rem;">Gateway Status</span><span class="tag tag-red" id="dash-status-tag">Offline</span></div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;"><span style="color:var(--text-muted); font-weight:600; font-size:0.85rem;">Active Connections</span><span class="mono" id="dash-conns">0</span></div>
+                                <div style="display:flex; gap:12px;">
+                                    <button class="btn" style="flex:1; background:var(--accent-bg); color:var(--accent); border:none;" data-action="gatewayAction" data-action-arg="start"><i class="fa-solid fa-play"></i> Start</button>
+                                    <button class="btn" style="flex:1; background:var(--danger-bg); color:var(--danger); border:none;" data-action="gatewayAction" data-action-arg="stop"><i class="fa-solid fa-stop"></i> Stop</button>
+                                    <button class="btn btn-primary" style="flex:1;" data-action="gatewayAction" data-action-arg="restart"><i class="fa-solid fa-rotate-right"></i> Restart</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel" style="min-height:0;">
+                            <div class="panel-header"><div class="panel-title"><i class="fa-solid fa-heart-pulse text-accent"></i> System Health</div></div>
+                            <div class="panel-body" style="gap: 12px;">
+                                <div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center;"><span style="color:var(--text-muted); font-weight:600; font-size:0.85rem;">CPU</span><span class="mono" id="dash-cpu">0%</span></div>
+                                    <div class="uptime-bar"><div class="uptime-fill" id="cpu-bar-fill" style="width:0%"></div></div>
+                                </div>
+                                <div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center;"><span style="color:var(--text-muted); font-weight:600; font-size:0.85rem;">Memory</span><span class="mono" id="dash-mem-alloc">0 / 0 MB</span></div>
+                                    <div class="uptime-bar"><div class="uptime-fill" id="mem-bar-fill" style="width:0%"></div></div>
+                                </div>
+                                <div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center;"><span style="color:var(--text-muted); font-weight:600; font-size:0.85rem;">Disk</span><span class="mono" id="dash-disk">0%</span></div>
+                                    <div class="uptime-bar"><div class="uptime-fill" id="disk-bar-fill" style="width:0%"></div></div>
+                                </div>
+                                <div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center;"><span style="color:var(--text-muted); font-weight:600; font-size:0.85rem;">30-Day Uptime</span><span class="mono" id="dash-uptime">0%</span></div>
+                                    <div class="uptime-bar"><div class="uptime-fill" id="uptime-fill" style="width:0%"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-analytics" class="tab-view">
+                <div class="header-section"><div><h2>Analytics</h2><p>System health, uptime, connections and destinations — streamed over WebSocket.</p></div></div>
+
+                <div class="grid-6">
+                    <div class="metric-card"><div class="metric-title">Active Connections <i class="fa-solid fa-plug" style="color:var(--info)"></i></div><div class="metric-val mono" id="a-conns">0</div></div>
+                    <div class="metric-card"><div class="metric-title">Gateway Uptime <i class="fa-solid fa-clock" style="color:var(--warning)"></i></div><div class="metric-val mono" id="m-uptime">0h 00m</div></div>
+                    <div class="metric-card"><div class="metric-title">30-Day Uptime <i class="fa-solid fa-shield-heart" style="color:var(--success)"></i></div><div class="metric-val mono" id="a-uptime30">0.0%</div></div>
+                    <div class="metric-card"><div class="metric-title">Peak Concurrent (24h) <i class="fa-solid fa-arrow-trend-up" style="color:var(--accent)"></i></div><div class="metric-val mono" id="a-peak">0</div></div>
+                    <div class="metric-card"><div class="metric-title">Total Clients <i class="fa-solid fa-users" style="color:var(--text-muted)"></i></div><div class="metric-val mono" id="a-total-clients">0</div></div>
+                    <div class="metric-card"><div class="metric-title">Active Clients <i class="fa-solid fa-user-check" style="color:var(--success)"></i></div><div class="metric-val mono" id="a-active-clients">0</div></div>
+                </div>
+
+                <div class="grid-3">
+                    <div class="panel" style="min-height:0;">
+                        <div class="panel-header"><div class="panel-title"><i class="fa-solid fa-signal text-info"></i> Concurrent Connections <span class="tag tag-green" style="margin-left:8px;">24h</span></div></div>
+                        <div class="panel-body-unpadded" style="padding: 12px;">
+                            <div class="chart-wrapper" style="padding: 0;"><canvas id="chart-conns"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="panel" style="min-height:0;">
+                        <div class="panel-header"><div class="panel-title"><i class="fa-solid fa-plug-circle-bolt text-purple"></i> Live Connections <span id="conn-count-badge" class="tag tag-blue" style="margin-left:8px;">0</span></div></div>
+                        <div class="panel-body-unpadded" style="overflow-y:auto;">
+                            <div id="live-connections" style="min-height:60px;">
+                                <div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:22px 0;">No active connections</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-2" style="flex: 1; min-height: 0; flex-shrink: 1;">
+                    <div class="panel" style="min-height:0;">
+                        <div class="panel-header"><div class="panel-title"><i class="fa-solid fa-users text-accent"></i> Client Activity</div></div>
+                        <div class="panel-body-unpadded" style="overflow-y:auto;">
+                            <div id="client-activity" style="min-height:60px;">
+                                <div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:22px 0;">No clients yet</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel" style="min-height:0;">
+                        <div class="panel-header"><div class="panel-title"><i class="fa-solid fa-globe text-info"></i> Top Destinations</div></div>
+                        <div class="panel-body-unpadded" style="overflow-y:auto;">
+                            <div id="dest-breakdown" style="min-height:60px;">
+                                <div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:22px 0;">No active traffic</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-clients" class="tab-view">
+                <div class="header-section">
+                    <div><h2>Client Profiles</h2><p>Manage, provision, and monitor individual access credentials.</p></div>
+                    <div style="display:flex; gap:12px;">
+                        <button class="btn btn-primary" data-action="openAddClientModal"><i class="fa-solid fa-user-plus"></i> Create Client</button>
+                    </div>
+                </div>
+                <div class="grid-1-2" style="height: 240px; flex-shrink:0;">
+                    <div class="panel"><div class="panel-header"><div class="panel-title"><i class="fa-solid fa-chart-pie text-accent"></i> Usage Share</div></div><div class="panel-body chart-wrapper" style="padding: 16px;"><canvas id="client-pie-chart"></canvas></div></div>
+                    <div class="panel">
+                        <div class="panel-header" style="position:relative;"><div class="panel-title"><i class="fa-solid fa-users-rays text-info"></i> Live Data Flow</div>
+                            <div class="traffic-totals"><span><i class="fa-solid fa-arrow-down-long" style="color:var(--accent);"></i> <b id="cf-rx">0.00</b> GB</span><span><i class="fa-solid fa-arrow-up-long" style="color:var(--info);"></i> <b id="cf-tx">0.00</b> GB</span></div>
+                        </div>
+                        <div class="panel-body-unpadded" style="padding: 12px;">
+                            <div class="chart-wrapper" style="padding: 0;"><canvas id="client-flow-chart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel panel-full">
+                    <div class="table-wrap"><table id="tbl-clients"><thead><tr><th>Remarks / SubID</th><th>Data Usage</th><th>Expiry Date</th><th>Status</th><th style="text-align:right;">Actions</th></tr></thead><tbody></tbody></table></div>
+                </div>
+            </div>
+
+            <div id="tab-sublab" class="tab-view">
+                <div class="header-section" style="flex-shrink:0;">
+                    <div style="flex:1;"><h2>Subscription Lab</h2><p>Build, customize, and preview subscription configs for any client. Transport is fixed to WebSocket.</p></div>
+                </div>
+                <div class="sublab-layout">
+                    <div class="sublab-editor">
+                        <div class="panel" style="flex-shrink:0;">
+                            <div class="panel-header"><div class="panel-title"><i class="fa-solid fa-user-gear text-accent"></i> Target Client</div></div>
+                            <div class="panel-body" style="padding: 16px; gap: 16px;">
+                                <select class="form-control" id="sub-client" data-change="onSubClientChange" style="width: 100%;"><option value="">— Select Client —</option></select>
+                                <button class="btn btn-primary" data-action="saveSubscriptionForClient" style="width: 100%;"><i class="fa-solid fa-floppy-disk"></i> Save Configuration</button>
+                            </div>
+                        </div>
+                        <div class="panel" style="flex:1; min-height:0;">
+                            <div class="panel-header">
+                                <div class="panel-title"><i class="fa-solid fa-list text-info"></i> Config Entries <span id="sub-entry-count" class="tag tag-blue" style="margin-left:8px;">0</span></div>
+                                <div style="display:flex; gap:8px;">
+                                    <button class="btn" style="padding:4px 10px; height: 30px; font-size:0.75rem;" data-action="addSubEntry" data-action-arg="proxy"><i class="fa-solid fa-plus"></i> Proxy</button>
+                                    <button class="btn" style="padding:4px 10px; height: 30px; font-size:0.75rem; background:var(--info-bg); color:var(--info); border:none;" data-action="addSubEntry" data-action-arg="info"><i class="fa-solid fa-circle-info"></i> Info</button>
+                                </div>
+                            </div>
+                            <div class="panel-body-unpadded" style="overflow-y:auto; padding:16px;">
+                                <div id="sub-entries-list" style="display:flex; flex-direction:column; gap:12px; min-height:60px; flex-shrink:0;">
+                                    <div id="sub-empty-hint" style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:30px 0;">Select a client and click <strong>+ Proxy</strong> or <strong>Info</strong>.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sublab-preview">
+                        <div class="panel" style="flex-shrink:0;">
+                            <div class="panel-header"><div class="panel-title"><i class="fa-solid fa-code text-accent"></i> Placeholders</div></div>
+                            <div class="panel-body" style="padding:16px; gap:8px;">
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                    <div class="ph-chip" data-action="copyPlaceholder" data-action-arg="%data-used%">%data-used%</div>
+                                    <div class="ph-chip" data-action="copyPlaceholder" data-action-arg="%data-remain%">%data-remain%</div>
+                                    <div class="ph-chip" data-action="copyPlaceholder" data-action-arg="%data-total%">%data-total%</div>
+                                    <div class="ph-chip" data-action="copyPlaceholder" data-action-arg="%expiry-date%">%expiry-date%</div>
+                                </div>
+                                <p style="font-size:0.7rem; color:var(--text-muted); margin-top:8px; text-align:center;">Click to copy placeholder to clipboard.</p>
+                            </div>
+                        </div>
+                        <div class="panel" style="flex:1; min-height:0;">
+                            <div class="panel-header"><div class="panel-title"><i class="fa-solid fa-mobile-screen text-purple"></i> Live Preview</div></div>
+                            <div class="panel-body-unpadded phone-mockup-wrapper">
+                                <div class="phone-mockup">
+                                    <div class="phone-notch"></div>
+                                    <div class="phone-screen">
+                                        <div class="phone-config-list" id="phone-config-list">
+                                            <div style="color:#52525b; font-size:0.75rem; text-align:center; padding:30px 0;">No configs yet</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-logs" class="tab-view">
+                <div class="header-section">
+                    <div><h2>Console Logs</h2><p>Server audit trail, streamed over WebSocket.</p></div>
+                    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                        <input type="text" id="log-search" class="form-control" placeholder="Search logs..." style="width:180px; padding:8px 14px; font-size:0.8rem;" data-input="filterLogs">
+                        <label class="switch" title="Auto-scroll"><input type="checkbox" id="log-autoscroll" checked><span class="slider"></span></label><span style="font-size:0.75rem; color:var(--text-muted); font-weight: 600;">Auto</span>
+                        <button class="btn btn-danger" id="btn-clear-logs" data-action="gatewayAction" data-action-arg="clear_logs"><i class="fa-solid fa-trash"></i> Clear</button>
+                    </div>
+                </div>
+                <div class="panel panel-full" style="border:none;"><div class="terminal" id="log-output"></div></div>
+            </div>
+
+        </div>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Primary">
+        <div class="bn-item active" data-action="switchTab" data-tab="dashboard"><i class="fa-solid fa-chart-pie"></i> Dashboard</div>
+        <div class="bn-item" data-action="switchTab" data-tab="analytics"><i class="fa-solid fa-chart-line"></i> Analytics</div>
+        <div class="bn-item" data-action="switchTab" data-tab="clients"><i class="fa-solid fa-users"></i> Clients</div>
+        <div class="bn-item" data-action="switchTab" data-tab="sublab"><i class="fa-solid fa-flask"></i> Sublab</div>
+        <div class="bn-item" data-action="switchTab" data-tab="logs"><i class="fa-solid fa-terminal"></i> Logs</div>
+    </nav>
+
+    <div class="modal-overlay" id="modal-inspector">
+        <div class="modal" style="max-width: 520px;">
+            <div class="modal-header"><div class="panel-title"><i class="fa-solid fa-microscope text-purple"></i> Connection Inspector</div><button class="btn-icon" style="background:none; border:none; color:var(--text-muted);" data-action="closeModal" data-action-arg="modal-inspector"><i class="fa-solid fa-times fa-lg"></i></button></div>
+            <div class="modal-body" id="inspector-body" style="font-size:0.9rem;"></div>
+            <div class="modal-footer">
+                <button class="btn" data-action="closeModal" data-action-arg="modal-inspector">Close</button>
+                <button class="btn btn-danger" data-action="killConn"><i class="fa-solid fa-skull-crossbones"></i> Kill Connection</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-client-info">
+        <div class="modal" style="max-width: 620px;">
+            <div class="modal-header"><div class="panel-title"><i class="fa-solid fa-circle-info text-accent"></i> Client Info</div><button class="btn-icon" style="background:none; border:none; color:var(--text-muted);" data-action="closeModal" data-action-arg="modal-client-info"><i class="fa-solid fa-times fa-lg"></i></button></div>
+            <div class="modal-body" id="client-info-body" style="font-size:0.9rem;"></div>
+            <div class="modal-footer">
+                <button class="btn" data-action="closeModal" data-action-arg="modal-client-info">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-confirm">
+        <div class="modal" style="max-width: 420px;">
+            <div class="modal-header"><div class="panel-title text-warning"><i class="fa-solid fa-triangle-exclamation"></i> Action Required</div></div>
+            <div class="modal-body" id="confirm-msg" style="font-size: 0.95rem; line-height: 1.6; font-weight: 500; text-align: center;"></div>
+            <div class="modal-footer" style="justify-content: center; gap: 16px;">
+                <button class="btn" data-action="closeConfirm" data-action-arg="false" style="min-width: 100px;">Cancel</button>
+                <button class="btn btn-danger" data-action="closeConfirm" data-action-arg="true" style="min-width: 100px;">Proceed</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-client">
+        <div class="modal" style="max-width: 580px;">
+            <div class="modal-header"><div class="panel-title">Client Profile</div><button class="btn-icon" style="background:none; border:none; color:var(--text-muted);" data-action="closeModal" data-action-arg="modal-client"><i class="fa-solid fa-times fa-lg"></i></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="c-edit-id" value="">
+                <div class="form-grid">
+                    <div class="form-group"><label class="form-label">Remarks</label><input type="text" class="form-control" id="c-name" placeholder="Enter Remark ..."></div>
+                    <div class="form-group" id="uuid-form-group"><label class="form-label">UUID</label><div class="input-group"><input type="text" class="form-control mono" id="c-uuid" readonly><button class="btn btn-icon" id="btn-gen-uuid" data-action="genUuidInput" style="height: auto; display: none;" title="Generate new UUID"><i class="fa-solid fa-rotate-right"></i></button></div><div style="font-size:0.7rem; color:var(--text-muted); margin-top:6px;">Assigned automatically on creation; shown read-only when editing.</div></div>
+                    <div class="form-group"><label class="form-label">Expiry Date</label><input type="datetime-local" class="form-control" id="c-expiry"></div>
+                    <div class="form-group"><label class="form-label">Limit (GB) [0 = Unlim]</label><input type="number" class="form-control" id="c-limit" value="0" min="0"></div>
+                </div>
+                <div class="settings-row" style="margin-top:20px; padding:16px 0 0 0; border-top:1px solid var(--border); border-bottom:none;">
+                    <div class="settings-info"><h4>Client Active</h4><p>Enable or disable this client.</p></div>
+                    <label class="switch"><input type="checkbox" id="c-active" checked><span class="slider"></span></label>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="btn" data-action="closeModal" data-action-arg="modal-client">Cancel</button><button class="btn btn-primary" id="btn-save-client" data-action="saveClient"><i class="fa-solid fa-check"></i> Save Client</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-qr">
+        <div class="modal" style="max-width: 420px; text-align:center;">
+            <div class="modal-header"><div class="panel-title">QR Connect</div><button class="btn-icon" style="background:none; border:none; color:var(--text-muted);" data-action="closeModal" data-action-arg="modal-qr"><i class="fa-solid fa-times fa-lg"></i></button></div>
+            <div class="modal-body" style="display:flex; flex-direction:column; align-items:center;">
+                <div class="qr-wrapper" id="qrcode"></div>
+                <textarea class="form-control mono" id="qr-text" rows="4" style="margin-top:20px; resize:none; font-size:0.75rem; width:100%;" readonly></textarea>
+            </div>
+            <div class="modal-footer" style="justify-content:center;">
+                <button class="btn btn-primary" data-action="copyQrText" style="width:100%;"><i class="fa-solid fa-copy"></i> Copy Link</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-box" id="toaster"></div>
+
+    <script nonce="{{CSP_NONCE}}">
+        
+        
+        
+        const BOOTSTRAP = {{BOOTSTRAP_JSON}};
+        const passSetup = {{PASS_SETUP}};
+        const loggedIn = {{LOGGED_IN}};
+
+        
+        
+        
+        const appState = {
+            clients: [],
+            subs: {},
+            settings: {},
+            telemetry: {},
+            gateway: 'running',
+            logs: []
+        };
+
+        
+        
+        
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function genUUID() {
+            if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+            const b = window.crypto.getRandomValues(new Uint8Array(16));
+            b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+            const h = [...b].map(x => x.toString(16).padStart(2, '0'));
+            return h.slice(0,4).join('') + '-' + h.slice(4,6).join('') + '-' + h.slice(6,8).join('') + '-' + h.slice(8,10).join('') + '-' + h.slice(10,16).join('');
+        }
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) { return navigator.clipboard.writeText(text).catch(() => _clipboardFallback(text)); }
+            _clipboardFallback(text); return Promise.resolve();
+        }
+        function _clipboardFallback(text) {
+            const ta = document.createElement('textarea'); ta.value = text;
+            ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+            document.body.appendChild(ta); ta.focus(); ta.select();
+            try { document.execCommand('copy'); } catch (_) {}
+            document.body.removeChild(ta);
+        }
+        window.copyPlaceholder = function(text) { copyToClipboard(text); showToast('Copied: ' + text, 'success'); };
+
+        let modalZ = 1000;
+        function openModal(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            modalZ = Math.min(modalZ + 10, 8500);
+            el.style.zIndex = modalZ;
+            el.classList.add('show');
+        }
+        function closeModal(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.remove('show');
+            el.style.zIndex = '';
+        }
+
+        function showToast(msg, type) {
+            type = type || 'info';
+            const toaster = document.getElementById('toaster');
+            if (!toaster) return;
+            const el = document.createElement('div'); el.className = 'toast';
+            const icon = type === 'success' ? 'fa-check-circle text-accent' : (type === 'error' ? 'fa-circle-xmark text-danger' : 'fa-info-circle text-info');
+            el.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${esc(msg)}</span>`;
+            toaster.appendChild(el);
+            setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(10px)'; setTimeout(() => el.remove(), 250); }, 3000);
+        }
+
+        let confirmCallback = null;
+        window.customConfirm = function(msg, cb) {
+            document.getElementById('confirm-msg').innerText = msg;
+            confirmCallback = cb;
+            openModal('modal-confirm');
+        };
+        window.closeConfirm = function(res) {
+            closeModal('modal-confirm');
+            if (confirmCallback) confirmCallback(res);
+        };
+
+        function showAuthRequired() {
+            const overlay = document.getElementById('auth-overlay');
+            if (overlay) {
+                overlay.style.display = 'flex';
+                const title = document.getElementById('auth-title');
+                if (title) title.innerHTML = '<i class="fa-solid fa-lock text-accent"></i> Authentication Required';
+                renderLoginForm();
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.bn-item').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll(`.nav-item[data-tab="${tabId}"], .bn-item[data-tab="${tabId}"]`).forEach(e => e.classList.add('active'));
+            document.querySelectorAll('.tab-view').forEach(e => e.classList.remove('active'));
+            const target = document.getElementById('tab-' + tabId);
+            if (target) target.classList.add('active');
+
+            const topbar = document.getElementById('main-topbar');
+            if (tabId === 'dashboard' && window.innerWidth > 1024) {
+                topbar.classList.add('hidden');
+            } else {
+                topbar.classList.remove('hidden');
+            }
+            if (window.innerWidth <= 1024) document.getElementById('sidebar').classList.remove('open');
+            if (tabId === 'logs') filterLogs();
+            if (tabId === 'dashboard' || tabId === 'analytics' || tabId === 'clients') ensureCharts();
+            setTimeout(function() {
+                try { [trafficChart, clientPieChart, clientFlowChart, connsChart].forEach(c => c && c.resize()); } catch (e) {}
+            }, 80);
+        }
+
+        
+        
+        
+        function applyTheme(theme) {
+            if (!theme) return;
+            const r = document.documentElement.style;
+            r.setProperty('--accent', theme.accent);
+            r.setProperty('--accent-hover', theme.accentHover);
+            r.setProperty('--accent-bg', theme.accentBackground);
+            r.setProperty('--success', theme.success);
+            r.setProperty('--purple', theme.accent);
+            r.setProperty('--purple-bg', theme.accentBackground);
+            if (trafficChart) {
+                trafficChart.data.datasets[0].borderColor = theme.accent;
+                trafficChart.data.datasets[0].backgroundColor = theme.accentBackground.replace(')', ', 0.15)').replace('rgb', 'rgba');
+            }
+            if (clientPieChart) updatePieChart();
+            if (clientFlowChart) {
+                clientFlowChart.data.datasets[0].borderColor = theme.accent;
+            }
+            if (connsChart) {
+                connsChart.data.datasets[0].borderColor = theme.accent;
+                connsChart.data.datasets[0].backgroundColor = theme.accentBackground.replace(')', ', 0.15)').replace('rgb', 'rgba');
+            }
+        }
+
+        function applyBootstrap(platform) {
+            if (!platform) return;
+        }
+
+        
+        
+        
+        let ws = null, wsRetry = 0, wsRetryTimer = null, hbWatchdog = null, lastServerHb = 0;
+
+        function wsUrl() {
+            return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/api/ws';
+        }
+        function connectWs() {
+            clearTimeout(wsRetryTimer);
+            try { ws = new WebSocket(wsUrl()); } catch (e) { scheduleReconnect(); return; }
+            ws.onopen = function() { wsRetry = 0; };
+            ws.onmessage = function(ev) {
+                try { handleWsMessage(JSON.parse(ev.data)); } catch (e) {}
+            };
+            ws.onclose = function() { scheduleReconnect(); };
+            ws.onerror = function() { try { ws.close(); } catch (e) {} };
+        }
+        function scheduleReconnect() {
+            if (wsRetryTimer) return;
+            const delays = [0, 500, 1000, 2000, 4000, 8000, 15000];
+            const d = delays[Math.min(wsRetry, delays.length - 1)] + Math.random() * 400;
+            wsRetry++;
+            wsRetryTimer = setTimeout(function() { wsRetryTimer = null; connectWs(); }, d);
+        }
+        function sendJson(obj) {
+            if (ws && ws.readyState === 1) { try { ws.send(JSON.stringify(obj)); } catch (e) {} }
+        }
+        function startHbWatchdog() {
+            clearInterval(hbWatchdog);
+            hbWatchdog = setInterval(function() {
+                if (Date.now() - lastServerHb > 35000) {
+                    try { ws.close(); } catch (e) {}
+                    scheduleReconnect();
+                }
+            }, 5000);
+        }
+
+        function handleWsMessage(msg) {
+            const type = msg.type || '';
+            const payload = msg.payload || {};
+            if (type === 'hello') {
+                applyBootstrap(payload.platform);
+                applyTheme(payload.theme || BOOTSTRAP.theme);
+                if (payload.state) applyState(payload.state);
+                if (payload.telemetry) applyTelemetry(payload.telemetry);
+                if (Array.isArray(payload.logs)) {
+                    appState.logs = payload.logs.slice(-300);
+                    renderLogs();
+                }
+                lastServerHb = Date.now();
+                startHbWatchdog();
+                
+                hideLoader();
+            } else if (type === 'state_changed' || type === 'state_snapshot') {
+                if (payload.state) applyState(payload.state);
+            } else if (type === 'telemetry') {
+                applyTelemetry(payload);
+            } else if (type === 'gateway_status') {
+                appState.gateway = payload.status || appState.gateway;
+                updateGatewayUI();
+            } else if (type === 'connection_opened' || type === 'connection_closed') {
+                
+            } else if (type === 'log_entry') {
+                if (payload.line) {
+                    appState.logs.push(payload.line);
+                    if (appState.logs.length > 300) appState.logs.shift();
+                    renderLogs();
+                }
+            } else if (type === 'command_result') {
+                if (payload.ok) showToast(payload.message || payload.action, 'success');
+                else showToast(payload.message || 'Command failed', 'error');
+            } else if (type === 'heartbeat') {
+                lastServerHb = Date.now();
+                sendJson({ type: 'heartbeat_ack', id: payload.id });
+            } else if (type === 'error') {
+                showToast(payload.message || 'Server error', 'error');
+            }
+        }
+
+        
+        
+        
+        function applyState(state) {
+            if (!state) return;
+            if (Array.isArray(state.clients)) appState.clients = state.clients;
+            if (state.subClientSubscriptions) appState.subs = state.subClientSubscriptions;
+            if (state.settings) appState.settings = state.settings;
+            renderClients();
+            populateSubClientSelect();
+            updateClientCountMetrics();
+        }
+
+        let trafficChart = null, clientPieChart = null, clientFlowChart = null, connsChart = null, chartsInited = false;
+        let clientSparklineChart = null;
+        const clientSpeedHistory = {};
+        let chartJsPromise = null;
+        function loadChartJs() {
+            if (window.Chart) return Promise.resolve();
+            if (!chartJsPromise) {
+                chartJsPromise = new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = '/static/vendor/js/chart.umd.js';
+                    s.integrity = 'sha384-zYPBGXwO4633CABX/5Spf6emCKUJCfoOkhOMYyxMsatqQZPnDblmmOewfjsIVWCM';
+                    s.crossOrigin = 'anonymous';
+                    s.onload = resolve;
+                    s.onerror = () => { chartJsPromise = null; reject(new Error('Chart.js failed to load')); };
+                    document.head.appendChild(s);
+                });
+            }
+            return chartJsPromise;
+        }
+
+        const centerLabelPlugin = {
+            id: 'centerLabel',
+            afterDraw(chart, args, opts) {
+                if (!opts || !opts.display) return;
+                const area = chart.chartArea;
+                if (!area) return;
+                const total = (opts.total != null) ? opts.total : chart.data.datasets[0].data.reduce((a, b) => a + (Number(b) || 0), 0);
+                const x = (area.left + area.right) / 2;
+                const y = (area.top + area.bottom) / 2;
+                const { ctx } = chart;
+                ctx.save();
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#fafafa';
+                ctx.font = '800 22px "Plus Jakarta Sans", sans-serif';
+                ctx.fillText(Number(total).toFixed(1), x, y - 4);
+                ctx.fillStyle = '#71717a';
+                ctx.font = '600 9px "Plus Jakarta Sans", sans-serif';
+                ctx.fillText('GB USED', x, y + 16);
+                ctx.restore();
+            }
+        };
+
+        function initCharts() {
+            if (chartsInited) return;
+            Chart.register(centerLabelPlugin);
+            chartsInited = true;
+
+            const accent = (BOOTSTRAP.theme && BOOTSTRAP.theme.accent) || '#8b5cf6';
+            const gridColor = 'rgba(255,255,255,0.05)';
+            const tickColor = '#63636b';
+            const tooltipStyle = {
+                backgroundColor: '#18181b', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+                titleColor: '#fafafa', bodyColor: '#a1a1aa', padding: 12, cornerRadius: 8,
+                displayColors: true, boxWidth: 8, boxHeight: 8, usePointStyle: true
+            };
+            const ttCb = { callbacks: { label: (c) => ` ${c.dataset.label}: ${Number(c.parsed.y).toFixed(2)} Mbps` } };
+            const trafficCanvas = document.getElementById('chart-traffic');
+            if (trafficCanvas && !trafficChart) {
+                trafficChart = new Chart(trafficCanvas.getContext('2d'), {
+                    type: 'line',
+                    data: { labels: Array(90).fill(''), datasets: [
+                        { label: 'Download', data: Array(90).fill(0), borderColor: accent, backgroundColor: accent + '26', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.35 },
+                        { label: 'Upload', data: Array(90).fill(0), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.35 }
+                    ]},
+                    options: {
+                        responsive: true, maintainAspectRatio: false, animation: false,
+                        interaction: { intersect: false, mode: 'index' },
+                        plugins: { legend: { display: false }, tooltip: Object.assign({}, tooltipStyle, ttCb) },
+                        scales: {
+                            x: { display: false },
+                            y: { beginAtZero: true, grid: { color: gridColor }, border: { display: false }, ticks: { color: tickColor, font: { size: 10 }, maxTicksLimit: 5, callback: (v) => v + ' Mb' } }
+                        }
+                    }
+                });
+            }
+            const pieCanvas = document.getElementById('client-pie-chart');
+            if (pieCanvas && !clientPieChart) {
+                clientPieChart = new Chart(pieCanvas.getContext('2d'), {
+                    type: 'doughnut',
+                    data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: 'rgba(9,9,11,1)', borderWidth: 2 }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, cutout: '72%', animation: false,
+                        plugins: {
+                            legend: { position: 'right', labels: { color: '#a1a1aa', usePointStyle: true, boxWidth: 6, font: { size: 10 } } },
+                            centerLabel: { display: true }
+                        }
+                    }
+                });
+            }
+            const flowCanvas = document.getElementById('client-flow-chart');
+            if (flowCanvas && !clientFlowChart) {
+                clientFlowChart = new Chart(flowCanvas.getContext('2d'), {
+                    type: 'line',
+                    data: { labels: Array(30).fill(''), datasets: [
+                        { label: 'Download', data: Array(30).fill(0), borderColor: accent, backgroundColor: accent + '26', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.35 },
+                        { label: 'Upload', data: Array(30).fill(0), borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.12)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.35 }
+                    ]},
+                    options: {
+                        responsive: true, maintainAspectRatio: false, animation: false,
+                        interaction: { intersect: false, mode: 'index' },
+                        plugins: { legend: { display: false }, tooltip: Object.assign({}, tooltipStyle, ttCb) },
+                        scales: { x: { display: false }, y: { beginAtZero: true, display: false, grid: { color: gridColor } } }
+                    }
+                });
+            }
+            const connsCanvas = document.getElementById('chart-conns');
+            if (connsCanvas && !connsChart) {
+                connsChart = new Chart(connsCanvas.getContext('2d'), {
+                    type: 'line',
+                    data: { labels: [], datasets: [
+                        { label: 'Concurrent', data: [], borderColor: accent, backgroundColor: accent + '26', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3 }
+                    ]},
+                    options: {
+                        responsive: true, maintainAspectRatio: false, animation: false,
+                        interaction: { intersect: false, mode: 'index' },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: Object.assign({}, tooltipStyle, { callbacks: { label: (c) => ` ${c.dataset.label}: ${Math.round(c.parsed.y)} conn${Math.round(c.parsed.y) === 1 ? '' : 's'}` } })
+                        },
+                        scales: {
+                            x: { grid: { display: false }, border: { display: false }, ticks: { color: tickColor, font: { size: 9 }, maxTicksLimit: 6, maxRotation: 0, autoSkip: true } },
+                            y: { beginAtZero: true, grid: { color: gridColor }, border: { display: false }, ticks: { color: tickColor, font: { size: 10 }, maxTicksLimit: 4, precision: 0 } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function ensureCharts() {
+            if (chartsInited) return;
+            loadChartJs().then(initCharts).catch(function() {});
+        }
+
+        function updateGatewayUI() {
+            const running = appState.gateway === 'running';
+            const tag = document.getElementById('dash-status-tag');
+            if (tag) { tag.className = running ? 'tag tag-green' : 'tag tag-red'; tag.innerText = running ? 'Online' : (appState.gateway === 'restarting' ? 'Restarting' : 'Stopped'); }
+            const dot = document.getElementById('gw-dot');
+            const lbl = document.getElementById('gw-label');
+            if (dot) { dot.style.background = running ? 'var(--accent)' : 'var(--danger)'; }
+            if (lbl) { lbl.style.color = running ? 'var(--accent)' : 'var(--danger)'; lbl.innerText = running ? 'GATEWAY RUNNING' : (appState.gateway === 'restarting' ? 'GATEWAY RESTARTING' : 'GATEWAY STOPPED'); }
+            const uptime = document.getElementById('m-uptime');
+            if (uptime) {
+                const s = appState.telemetry.gatewayUptimeSec || 0;
+                uptime.innerText = running ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60).toString().padStart(2, '0')}m` : 'Stopped';
+            }
+        }
+
+        function applyTelemetry(t) {
+            if (!t) return;
+            appState.telemetry = t;
+            appState.gateway = t.gateway || appState.gateway;
+            const cs = t.clientSpeeds || {};
+            for (const cid in cs) {
+                if (!clientSpeedHistory[cid]) clientSpeedHistory[cid] = { down: [], up: [] };
+                const h = clientSpeedHistory[cid];
+                h.down.push((cs[cid].down_bps || 0) / 1e6);
+                h.up.push((cs[cid].up_bps || 0) / 1e6);
+                if (h.down.length > 60) { h.down.shift(); h.up.shift(); }
+            }
+            updateGatewayUI();
+
+            const el = (id) => document.getElementById(id);
+            if (el('m-rx')) el('m-rx').innerHTML = `${Number(t.totalRxGb || 0).toFixed(2)} <span class="metric-sub">GB</span>`;
+            if (el('m-tx')) el('m-tx').innerHTML = `${Number(t.totalTxGb || 0).toFixed(2)} <span class="metric-sub">GB</span>`;
+            if (el('m-rx-mini')) el('m-rx-mini').innerText = Number(t.totalRxGb || 0).toFixed(2);
+            if (el('m-tx-mini')) el('m-tx-mini').innerText = Number(t.totalTxGb || 0).toFixed(2);
+            if (el('m-speed')) el('m-speed').innerHTML = `${Number(t.speedDownMbps || 0).toFixed(1)} <span class="metric-sub">/ ${Number(t.speedUpMbps || 0).toFixed(1)} Mbps</span>`;
+            if (el('m-speed-mini')) el('m-speed-mini').innerText = `${Number(t.speedDownMbps || 0).toFixed(1)} / ${Number(t.speedUpMbps || 0).toFixed(1)}`;
+            if (el('dash-conns')) el('dash-conns').innerText = String(t.connections || 0);
+            if (el('dash-mem-alloc')) el('dash-mem-alloc').innerText = `${Number(t.ramMb || 0).toFixed(0)} / ${Number(t.ramTotalMb || 512).toFixed(0)} MB`;
+            if (el('dash-cpu')) el('dash-cpu').innerText = `${Number(t.cpuPercent || 0).toFixed(1)}%`;
+            if (el('dash-disk')) el('dash-disk').innerText = `${Number(t.diskPct || 0).toFixed(1)}%`;
+            if (el('dash-uptime')) el('dash-uptime').innerText = `${Number(t.uptime30d || 0).toFixed(1)}%`;
+            if (el('a-conns')) el('a-conns').innerText = String(t.connections || 0);
+            if (el('a-uptime30')) el('a-uptime30').innerText = `${Number(t.uptime30d || 0).toFixed(1)}%`;
+            if (el('a-peak')) el('a-peak').innerText = String(t.peakConns24h || 0);
+            updateClientCountMetrics();
+            updateConnsChart(t);
+            const uf = document.getElementById('uptime-fill');
+            if (uf) uf.style.width = `${Math.min(100, Number(t.uptime30d || 0))}%`;
+            if (el('cpu-bar-fill')) el('cpu-bar-fill').style.width = `${Math.min(100, Number(t.cpuPercent || 0))}%`;
+            if (el('mem-bar-fill')) el('mem-bar-fill').style.width = `${Math.min(100, (Number(t.ramTotalMb) > 0 ? (Number(t.ramMb || 0) / Number(t.ramTotalMb)) * 100 : 0))}%`;
+            if (el('disk-bar-fill')) el('disk-bar-fill').style.width = `${Math.min(100, Number(t.diskPct || 0))}%`;
+            renderConnections(t.connectionDetails);
+            renderClientActivity();
+            renderDestinations();
+            renderClientInfoModal();
+            renderClients();
+
+            if (el('t-rx')) el('t-rx').innerText = Number(t.totalRxGb || 0).toFixed(2);
+            if (el('t-tx')) el('t-tx').innerText = Number(t.totalTxGb || 0).toFixed(2);
+            if (el('cf-rx')) el('cf-rx').innerText = Number(t.totalRxGb || 0).toFixed(2);
+            if (el('cf-tx')) el('cf-tx').innerText = Number(t.totalTxGb || 0).toFixed(2);
+
+            if (trafficChart) {
+                trafficChart.data.datasets[0].data.push(t.speedDownMbps || 0);
+                trafficChart.data.datasets[1].data.push(t.speedUpMbps || 0);
+                if (trafficChart.data.datasets[0].data.length > 90) {
+                    trafficChart.data.datasets[0].data.shift();
+                    trafficChart.data.datasets[1].data.shift();
+                }
+                trafficChart.update('none');
+                const peak = Math.max.apply(null, trafficChart.data.datasets[0].data.concat(trafficChart.data.datasets[1].data));
+                const peakEl = el('d-peak');
+                if (peakEl) peakEl.innerHTML = `${Number(peak || 0).toFixed(1)} <span class="metric-sub">Mbps</span>`;
+            }
+            if (clientPieChart) updatePieChart();
+            if (clientFlowChart) {
+                clientFlowChart.data.datasets[0].data.push(t.speedDownMbps || 0);
+                clientFlowChart.data.datasets[1].data.push(t.speedUpMbps || 0);
+                if (clientFlowChart.data.datasets[0].data.length > 30) {
+                    clientFlowChart.data.datasets[0].data.shift();
+                    clientFlowChart.data.datasets[1].data.shift();
+                }
+                clientFlowChart.update('none');
+            }
+        }
+
+        function updateConnsChart(t) {
+            if (!connsChart) return;
+            const counts = Array.isArray(t.connsHistory) ? t.connsHistory : [];
+            const start = Number(t.connsHistoryStart || 0);
+            const labels = [];
+            for (let i = 0; i < counts.length; i++) {
+                const d = new Date((start + i * 60) * 1000);
+                labels.push(String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'));
+            }
+            connsChart.data.labels = labels;
+            connsChart.data.datasets[0].data = counts;
+            connsChart.update('none');
+        }
+
+        function updateClientCountMetrics() {
+            const elc = (id) => document.getElementById(id);
+            if (elc('a-total-clients')) elc('a-total-clients').innerText = String(appState.clients.length || 0);
+            if (elc('a-active-clients')) elc('a-active-clients').innerText = String(appState.clients.filter(c => c.status).length || 0);
+        }
+
+        function updatePieChart() {
+            if (!clientPieChart) return;
+            const usage = appState.clients.map(c => c.usage || 0);
+            const total = usage.reduce((a, b) => a + (Number(b) || 0), 0);
+            const accent = (BOOTSTRAP.theme && BOOTSTRAP.theme.accent) || '#8b5cf6';
+            if (total <= 0) {
+                clientPieChart.data.labels = ['No usage yet'];
+                clientPieChart.data.datasets[0].data = [1];
+                clientPieChart.data.datasets[0].backgroundColor = ['rgba(255,255,255,0.06)'];
+            } else {
+                clientPieChart.data.labels = appState.clients.map(c => c.name);
+                clientPieChart.data.datasets[0].data = usage;
+                clientPieChart.data.datasets[0].backgroundColor = [accent, '#a855f7', '#6366f1', '#3b82f6', '#f59e0b', '#ec4899'];
+            }
+            clientPieChart.options.plugins.centerLabel.total = total;
+            clientPieChart.update();
+        }
+
+        
+        
+        
+        function rowSig(c, sp) {
+            return (c.name || '') + '|' + (c.usage || 0) + '|' + (c.limit || 0) + '|' + (c.status ? 1 : 0) + '|' + (c.expiry || '') + '|' + (sp ? (sp.down_bps || 0) + '/' + (sp.up_bps || 0) : '');
+        }
+        function renderClients() {
+            const tb = document.querySelector('#tbl-clients tbody');
+            if (!tb) return;
+            const scrollPos = tb.parentElement.scrollTop;
+            const speeds = (appState.telemetry && appState.telemetry.clientSpeeds) || {};
+            const existing = new Map();
+            tb.querySelectorAll('tr[data-id]').forEach(tr => existing.set(tr.dataset.id, tr));
+            const seen = new Set();
+            appState.clients.forEach(c => {
+                seen.add(c.id);
+                const sp = speeds[c.id] || null;
+                const sig = rowSig(c, sp);
+                let tr = existing.get(c.id);
+                if (!tr) {
+                    tr = document.createElement('tr');
+                    tr.dataset.id = c.id;
+                    tb.appendChild(tr);
+                } else if (tr.dataset.sig === sig) {
+                    return;
+                }
+                tr.dataset.sig = sig;
+                const used = (c.usage || 0);
+                const lim = c.limit || 0;
+                const pct = lim > 0 ? Math.min(100, (used / lim) * 100) : 0;
+                const pctCls = pct > 90 ? 'tag-red' : (pct > 75 ? 'tag-warn' : 'tag-green');
+                const badge = (sp && (sp.down_bps || sp.up_bps))
+                    ? `<span class="speed-badge"><span class="dl">↓ ${fmtSpeed(sp.down_bps)}</span><span class="ul"> ↑ ${fmtSpeed(sp.up_bps)}</span></span>`
+                    : '';
+                tr.innerHTML = `
+                    <td><div style="font-weight:700;">${esc(c.name)}</div><div class="mono" style="font-size:0.65rem; color:var(--text-muted);">${esc(String(c.id).split('-')[0])}…</div></td>
+                    <td>
+                        <div><strong>${used.toFixed(2)}</strong> <span style="font-size:0.75rem; color:var(--text-muted);">/ ${lim === 0 ? '∞' : lim + ' GB'}</span></div>
+                        ${lim > 0 ? `<span class="tag ${pctCls}" style="margin-top:6px;">${pct.toFixed(1)}%</span>` : ''}
+                        ${badge}
+                    </td>
+                    <td><span class="mono" style="color:var(--text-muted);">${c.expiry ? new Date(c.expiry).toLocaleString() : 'Never'}</span></td>
+                    <td><span class="tag ${c.status ? 'tag-green' : 'tag-red'}">${c.status ? 'Active' : 'Disabled'}</span></td>
+                    <td style="text-align:right;">
+                        <button class="btn btn-icon" title="Live info" data-action="showClientInfo" data-id="${esc(c.id)}"><i class="fa-solid fa-circle-info"></i></button>
+                        <button class="btn btn-icon" title="QR" data-action="showQR" data-id="${esc(c.id)}"><i class="fa-solid fa-qrcode"></i></button>
+                        <button class="btn btn-icon" title="Copy subscription link" data-action="copyClientSubscriptionLink" data-id="${esc(c.id)}"><i class="fa-solid fa-link"></i></button>
+                        <button class="btn btn-icon" title="Edit" data-action="openEditClient" data-id="${esc(c.id)}"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn btn-icon btn-danger" title="Delete" data-action="deleteClient" data-id="${esc(c.id)}"><i class="fa-solid fa-trash"></i></button>
+                    </td>`;
+            });
+            existing.forEach((tr, id) => { if (!seen.has(id)) tr.remove(); });
+            tb.parentElement.scrollTop = scrollPos;
+            if (clientPieChart) updatePieChart();
+        }
+
+        function openAddClientModal() {
+            document.getElementById('c-edit-id').value = '';
+            document.getElementById('c-name').value = '';
+            document.getElementById('c-uuid').value = genUUID();
+            document.getElementById('c-uuid').readOnly = true;
+            document.getElementById('c-limit').value = 0;
+            document.getElementById('c-expiry').value = '';
+            document.getElementById('c-active').checked = true;
+            document.getElementById('uuid-form-group').style.display = 'none';
+            openModal('modal-client');
+        }
+        function openEditClient(id) {
+            const c = appState.clients.find(x => x.id === id);
+            if (!c) return;
+            document.getElementById('c-edit-id').value = c.id;
+            document.getElementById('c-name').value = c.name;
+            document.getElementById('c-uuid').value = c.id;
+            document.getElementById('c-uuid').readOnly = true;
+            document.getElementById('c-limit').value = c.limit || 0;
+            const expDate = c.expiry ? new Date(c.expiry) : null;
+            document.getElementById('c-expiry').value = (expDate && !isNaN(expDate.getTime()))
+                ? expDate.getFullYear() + '-' + String(expDate.getMonth() + 1).padStart(2, '0') + '-' + String(expDate.getDate()).padStart(2, '0') + 'T' + String(expDate.getHours()).padStart(2, '0') + ':' + String(expDate.getMinutes()).padStart(2, '0')
+                : '';
+            document.getElementById('c-active').checked = !!c.status;
+            document.getElementById('uuid-form-group').style.display = '';
+            openModal('modal-client');
+        }
+        async function saveClient() {
+            const id = document.getElementById('c-edit-id').value;
+            const name = document.getElementById('c-name').value.trim();
+            if (!name) return showToast('Name required', 'error');
+            const payload = {
+                label: name,
+                limit_value: parseFloat(document.getElementById('c-limit').value) || 0,
+                active: document.getElementById('c-active').checked
+            };
+            const expiryVal = document.getElementById('c-expiry').value;
+            if (expiryVal) payload.expiry = new Date(expiryVal).toISOString();
+            try {
+                let res;
+                if (id) {
+                    res = await fetch('/api/links/' + encodeURIComponent(id), {
+                        method: 'PATCH', headers: csrfHeaders(), body: JSON.stringify(payload)
+                    });
+                } else {
+                    payload.limit_unit = 'GB';
+                    res = await fetch('/api/links', {
+                        method: 'POST', headers: csrfHeaders(), body: JSON.stringify(payload)
+                    });
+                }
+                if (res.status === 401) { showAuthRequired(); return; }
+                const data = await res.json();
+                if (!data.ok) throw new Error(data.error || 'save failed');
+                closeModal('modal-client');
+                showToast('Client saved', 'success');
+            } catch (e) {
+                showToast('Save failed: ' + e.message, 'error');
+            }
+        }
+        function deleteClient(id) {
+            customConfirm('Are you sure you want to delete this client? All of its subscription configs will be removed.', async (res) => {
+                if (!res) return;
+                try {
+                    const r = await fetch('/api/links/' + encodeURIComponent(id), { method: 'DELETE', headers: csrfHeaders() });
+                    if (r.status === 401) { showAuthRequired(); return; }
+                    const d = await r.json();
+                    if (!d.ok) throw new Error(d.error || 'delete failed');
+                    showToast('Client removed', 'success');
+                } catch (e) {
+                    showToast('Delete failed: ' + e.message, 'error');
+                }
+            });
+        }
+
+        const CSRF_TOKEN = (BOOTSTRAP && BOOTSTRAP.csrfToken) || '';
+        function csrfHeaders(extra) {
+            const h = { 'Content-Type': 'application/json' };
+            if (CSRF_TOKEN) h['X-CSRF-Token'] = CSRF_TOKEN;
+            return Object.assign(h, extra || {});
+        }
+
+        function fmtSpeed(bps) {
+            bps = bps || 0;
+            if (bps >= 1e6) return (bps / 1e6).toFixed(2) + ' Mbps';
+            if (bps >= 1e3) return (bps / 1e3).toFixed(0) + ' Kbps';
+            return bps + ' bps';
+        }
+        function fmtDur(sec) {
+            sec = Math.floor(sec || 0);
+            if (sec < 60) return sec + 's';
+            if (sec < 3600) return Math.floor(sec / 60) + 'm ' + (sec % 60) + 's';
+            return Math.floor(sec / 3600) + 'h ' + Math.floor((sec % 3600) / 60) + 'm';
+        }
+        function fmtBytes(b) {
+            b = b || 0;
+            if (b >= (1 << 30)) return (b / (1 << 30)).toFixed(2) + ' GB';
+            if (b >= (1 << 20)) return (b / (1 << 20)).toFixed(1) + ' MB';
+            if (b >= (1 << 10)) return (b / (1 << 10)).toFixed(0) + ' KB';
+            return b + ' B';
+        }
+        function flagEmoji(cc) {
+            if (!cc) return '🌐';
+            const A = 0x1F1E6;
+            try { return String.fromCodePoint(...cc.toUpperCase().split('').map(ch => A + ch.charCodeAt(0) - 65)); }
+            catch (e) { return '🌐'; }
+        }
+
+        let lastConnSig = '';
+        function renderConnections(details) {
+            const box = document.getElementById('live-connections');
+            if (!box) return;
+            const badge = document.getElementById('conn-count-badge');
+            const list = details || [];
+            if (badge) badge.innerText = String(list.length);
+            const sig = list.map(d => d.id + ':' + Math.floor(d.duration_sec) + ':' + d.rx_bytes + ':' + d.tx_bytes).join(',');
+            if (sig === lastConnSig) return;
+            lastConnSig = sig;
+            if (list.length === 0) {
+                box.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:22px 0;">No active connections</div>';
+                return;
+            }
+            let html = '';
+            list.forEach(c => {
+                const geo = c.geo || {};
+                const loc = geo.country ? ((geo.city ? geo.city + ', ' : '') + geo.country) : (c.peer_ip || '—');
+                html += `<div class="conn-row" data-action="inspectConn" data-conn-id="${esc(c.id)}">
+                    <div class="conn-flag">${flagEmoji(geo.code)}</div>
+                    <div class="conn-main">
+                        <div class="conn-title">${esc(c.client_name)} → ${esc(c.dest)}:${c.dest_port}</div>
+                        <div class="conn-sub">${esc(loc)} • ${esc((c.protocol || 'tcp').toUpperCase())} • ${fmtDur(c.duration_sec)}</div>
+                    </div>
+                    <div class="conn-stats">
+                        <span style="color:var(--accent);">↓ ${fmtSpeed(c.down_bps)}</span>
+                        <span style="color:var(--info);">↑ ${fmtSpeed(c.up_bps)}</span>
+                        <span style="color:var(--text-muted);">${fmtBytes((c.rx_bytes || 0) + (c.tx_bytes || 0))}</span>
+                    </div>
+                </div>`;
+            });
+            box.innerHTML = html;
+        }
+
+        function renderClientActivity() {
+            const box = document.getElementById('client-activity');
+            if (!box) return;
+            const speeds = (appState.telemetry && appState.telemetry.clientSpeeds) || {};
+            const sig = appState.clients.map(c => (c.id || '') + ':' + (c.usage || 0) + ':' + (c.limit || 0) + ':' + (speeds[c.id] ? (speeds[c.id].down_bps || 0) + '/' + (speeds[c.id].up_bps || 0) : '0/0')).join(',');
+            if (box.dataset.sig === sig) return;
+            box.dataset.sig = sig;
+            const rows = appState.clients.map(c => {
+                const sp = speeds[c.id] || {};
+                const used = Number(c.usage || 0);
+                const lim = Number(c.limit || 0);
+                const pct = lim > 0 ? Math.min(100, (used / lim) * 100) : 0;
+                const barColor = pct > 90 ? 'background:var(--danger);' : (pct > 75 ? 'background:var(--warning);' : '');
+                return `
+                    <div class="conn-row" style="cursor:default; align-items:flex-start;">
+                        <div class="conn-flag" style="padding-top:3px;"><i class="fa-solid fa-user" style="color:var(--accent);"></i></div>
+                        <div class="conn-main">
+                            <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                                <div class="conn-title" style="flex:1; min-width:0;">${esc(c.name)}</div>
+                                <span class="speed-badge" style="margin-top:0; flex-shrink:0;"><span class="dl">↓ ${fmtSpeed(sp.down_bps)}</span><span class="ul"> ↑ ${fmtSpeed(sp.up_bps)}</span></span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
+                                <div class="uptime-bar" style="flex:1; margin-top:0;"><div class="uptime-fill" style="width:${pct}%; ${barColor}"></div></div>
+                                <span class="mono" style="font-size:0.65rem; color:var(--text-muted); white-space:nowrap;">${used.toFixed(2)} / ${lim === 0 ? '∞' : lim + ' GB'}</span>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+            box.innerHTML = rows || '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:22px 0;">No clients yet</div>';
+        }
+
+        function renderDestinations() {
+            const box = document.getElementById('dest-breakdown');
+            if (!box) return;
+            const details = (appState.telemetry && appState.telemetry.connectionDetails) || [];
+            const agg = {};
+            details.forEach(c => {
+                const key = (c.dest || '?') + ':' + (c.dest_port || 0);
+                if (!agg[key]) agg[key] = { key: key, proto: (c.protocol || 'tcp').toUpperCase(), count: 0, bytes: 0 };
+                agg[key].count++;
+                agg[key].bytes += (c.rx_bytes || 0) + (c.tx_bytes || 0);
+            });
+            const list = Object.values(agg);
+            const sig = list.map(a => a.key + ':' + a.count + ':' + a.bytes).join(',');
+            if (box.dataset.sig === sig) return;
+            box.dataset.sig = sig;
+            const rows = list.sort((a, b) => b.bytes - a.bytes).map(a => `
+                <div class="conn-row" style="cursor:default;">
+                    <div class="conn-flag"><i class="fa-solid fa-globe" style="color:var(--info);"></i></div>
+                    <div class="conn-main">
+                        <div class="conn-title">${esc(a.key)} <span class="tag tag-blue" style="font-size:0.6rem; margin-left:6px;">${esc(a.proto)}</span></div>
+                        <div class="conn-sub">${a.count} active connection${a.count > 1 ? 's' : ''}</div>
+                    </div>
+                    <div class="conn-stats"><span style="color:var(--text-muted);">${fmtBytes(a.bytes)}</span></div>
+                </div>`).join('');
+            box.innerHTML = rows || '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:22px 0;">No active traffic</div>';
+        }
+
+        let inspectedConn = null;
+        function inspectConn(connId) {
+            const details = (appState.telemetry && appState.telemetry.connectionDetails) || [];
+            const c = details.find(x => x.id === connId);
+            if (!c) { showToast('Connection no longer active', 'error'); return; }
+            inspectedConn = c;
+            const geo = c.geo || {};
+            const loc = geo.country ? ((geo.city ? geo.city + ', ' : '') + geo.country) : (c.peer_ip || '—');
+            document.getElementById('inspector-body').innerHTML = `
+                <div class="info-row"><span class="k">Client</span><span class="v">${esc(c.client_name)}</span></div>
+                <div class="info-row"><span class="k">UUID</span><span class="v mono" style="font-size:0.75rem;">${esc(c.client_id)}</span></div>
+                <div class="info-row"><span class="k">Peer IP</span><span class="v mono">${esc(c.peer_ip || '—')}</span></div>
+                <div class="info-row"><span class="k">Location</span><span class="v">${flagEmoji(geo.code)} ${esc(loc)}</span></div>
+                <div class="info-row"><span class="k">Destination</span><span class="v mono">${esc(c.dest)}:${c.dest_port}</span></div>
+                <div class="info-row"><span class="k">Protocol</span><span class="v">${esc((c.protocol || 'tcp').toUpperCase())}</span></div>
+                <div class="info-row"><span class="k">Duration</span><span class="v mono">${fmtDur(c.duration_sec)}</span></div>
+                <div class="info-row"><span class="k">Transferred</span><span class="v mono">↓ ${fmtBytes(c.rx_bytes)} / ↑ ${fmtBytes(c.tx_bytes)}</span></div>
+                <div class="info-row"><span class="k">Live Speed</span><span class="v mono">↓ ${fmtSpeed(c.down_bps)} / ↑ ${fmtSpeed(c.up_bps)}</span></div>`;
+            openModal('modal-inspector');
+        }
+        function killConn() {
+            if (!inspectedConn) return;
+            customConfirm(`Terminate connection to ${inspectedConn.dest}:${inspectedConn.dest_port}?`, async (res) => {
+                if (!res) return;
+                try {
+                    const r = await fetch('/api/connections/' + encodeURIComponent(inspectedConn.id) + '/kill', { method: 'POST', headers: csrfHeaders() });
+                    if (r.status === 401) { showAuthRequired(); return; }
+                    const d = await r.json();
+                    if (!d.ok) throw new Error(d.error || 'kill failed');
+                    closeModal('modal-inspector');
+                    showToast('Connection terminated', 'success');
+                } catch (e) { showToast('Kill failed: ' + e.message, 'error'); }
+            });
+        }
+
+        function subLinkFor(id) {
+            const client = appState.clients.find(c => c.id === id);
+            const slug = (client && client.sub_slug) ? client.sub_slug : id;
+            return (BOOTSTRAP.platform && BOOTSTRAP.platform.publicBaseUrl ? BOOTSTRAP.platform.publicBaseUrl : location.origin) + '/sub/' + slug;
+        }
+        function copyClientSubscriptionLink(clientId) {
+            copyToClipboard(subLinkFor(clientId));
+            showToast('Subscription link copied!', 'success');
+        }
+
+        let logFilterTimer = null;
+        document.addEventListener('click', function(e) {
+            const el = e.target && e.target.closest ? e.target.closest('[data-action]') : null;
+            if (!el) return;
+            const action = el.getAttribute('data-action');
+            const arg = el.getAttribute('data-action-arg');
+            const id = el.getAttribute('data-id');
+            if (action === 'switchTab') { switchTab(el.getAttribute('data-tab')); e.preventDefault(); }
+            else if (action === 'toggleSidebar') document.getElementById('sidebar').classList.toggle('open');
+            else if (action === 'doLogout') doLogout(e);
+            else if (action === 'gatewayAction') gatewayAction(arg);
+            else if (action === 'addSubEntry') addSubEntry(arg);
+            else if (action === 'copyPlaceholder') copyPlaceholder(arg);
+            else if (action === 'closeConfirm') closeConfirm(arg === 'true');
+            else if (action === 'closeModal') closeModal(arg);
+            else if (action === 'openAddClientModal') openAddClientModal();
+            else if (action === 'saveClient') saveClient();
+            else if (action === 'genUuidInput') document.getElementById('c-uuid').value = genUUID();
+            else if (action === 'copyQrText') { copyToClipboard(document.getElementById('qr-text').value); showToast('Copied to clipboard!', 'success'); }
+            else if (action === 'showQR') showQR(id);
+            else if (action === 'showClientInfo') showClientInfo(id);
+            else if (action === 'copyClientSubscriptionLink') copyClientSubscriptionLink(id);
+            else if (action === 'openEditClient') openEditClient(id);
+            else if (action === 'deleteClient') deleteClient(id);
+            else if (action === 'moveSubEntry') moveSubEntry(id, parseInt(arg, 10));
+            else if (action === 'removeSubEntry') removeSubEntry(id);
+            else if (action === 'copySingleEntry') copySingleEntry(id);
+            else if (action === 'saveSubscriptionForClient') saveSubscriptionForClient();
+            else if (action === 'setupPassword') setupPassword();
+            else if (action === 'doLogin') doLogin();
+            else if (action === 'inspectConn') inspectConn(el.getAttribute('data-conn-id'));
+            else if (action === 'killConn') killConn();
+        });
+        document.addEventListener('change', function(e) {
+            const el = e.target && e.target.closest ? e.target.closest('[data-change]') : null;
+            if (!el) return;
+            const fn = el.getAttribute('data-change');
+            if (fn === 'onSubClientChange') onSubClientChange();
+        });
+        document.addEventListener('input', function(e) {
+            const el = e.target && e.target.closest ? e.target.closest('[data-input]') : null;
+            if (!el) return;
+            const fn = el.getAttribute('data-input');
+            if (fn === 'filterLogs') {
+                clearTimeout(logFilterTimer);
+                logFilterTimer = setTimeout(filterLogs, 200);
+            } else if (fn === 'updateSubEntryName') updateSubEntry(el.getAttribute('data-entry-id'), 'name', el.value);
+            else if (fn === 'updateSubEntryIp') updateSubEntry(el.getAttribute('data-entry-id'), 'ipAddress', el.value);
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Enter') return;
+            const el = e.target;
+            if (!el || !el.id) return;
+            if (el.id === 'confirm-pass-input') setupPassword();
+            else if (el.id === 'pass-input') doLogin();
+        });
+        let inspectedClientId = null;
+        function showClientInfo(id) {
+            inspectedClientId = id;
+            openModal('modal-client-info');
+            renderClientInfoModal();
+        }
+        function renderClientInfoModal() {
+            const body = document.getElementById('client-info-body');
+            const modal = document.getElementById('modal-client-info');
+            if (!body || !modal || !modal.classList.contains('show') || !inspectedClientId) return;
+            const c = appState.clients.find(x => x.id === inspectedClientId);
+            if (!c) { closeModal('modal-client-info'); return; }
+            const t = appState.telemetry || {};
+            const details = (t.connectionDetails || []).filter(d => d.client_id === c.id);
+            const sp = (t.clientSpeeds || {})[c.id] || {};
+            const hist = clientSpeedHistory[c.id] || { down: [], up: [] };
+            const used = Number(c.usage || 0);
+            const lim = Number(c.limit || 0);
+            const pct = lim > 0 ? Math.min(100, (used / lim) * 100) : 0;
+            const pctCls = pct > 90 ? 'tag-red' : (pct > 75 ? 'tag-warn' : 'tag-green');
+            const agg = {};
+            details.forEach(d => {
+                const key = (d.dest || '?') + ':' + (d.dest_port || 0);
+                if (!agg[key]) agg[key] = { key: key, proto: (d.protocol || 'tcp').toUpperCase(), count: 0, bytes: 0 };
+                agg[key].count++;
+                agg[key].bytes += (d.rx_bytes || 0) + (d.tx_bytes || 0);
+            });
+            const dests = Object.values(agg).sort((a, b) => b.bytes - a.bytes).slice(0, 8);
+            const connsHtml = details.length ? details.map(d => {
+                const geo = d.geo || {};
+                const loc = geo.country ? ((geo.city ? geo.city + ', ' : '') + geo.country) : (d.peer_ip || '—');
+                return `<div class="conn-row" data-action="inspectConn" data-conn-id="${esc(d.id)}">
+                    <div class="conn-flag">${flagEmoji(geo.code)}</div>
+                    <div class="conn-main">
+                        <div class="conn-title">${esc(d.dest)}:${d.dest_port}</div>
+                        <div class="conn-sub">${esc(loc)} • ${esc((d.protocol || 'tcp').toUpperCase())} • ${fmtDur(d.duration_sec)}</div>
+                    </div>
+                    <div class="conn-stats">
+                        <span style="color:var(--accent);">↓ ${fmtSpeed(d.down_bps)}</span>
+                        <span style="color:var(--info);">↑ ${fmtSpeed(d.up_bps)}</span>
+                        <span style="color:var(--text-muted);">${fmtBytes((d.rx_bytes || 0) + (d.tx_bytes || 0))}</span>
+                    </div>
+                </div>`;
+            }).join('') : '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:18px 0;">No active connections</div>';
+            const destsHtml = dests.length ? dests.map(a => `
+                <div class="conn-row" style="cursor:default;">
+                    <div class="conn-flag"><i class="fa-solid fa-globe" style="color:var(--info);"></i></div>
+                    <div class="conn-main">
+                        <div class="conn-title">${esc(a.key)} <span class="tag tag-blue" style="font-size:0.6rem; margin-left:6px;">${esc(a.proto)}</span></div>
+                        <div class="conn-sub">${a.count} active connection${a.count > 1 ? 's' : ''}</div>
+                    </div>
+                    <div class="conn-stats"><span style="color:var(--text-muted);">${fmtBytes(a.bytes)}</span></div>
+                </div>`).join('') : '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:18px 0;">No active traffic</div>';
+            body.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                        <div class="conn-flag"><i class="fa-solid fa-user" style="color:var(--accent);"></i></div>
+                        <div style="min-width:0;">
+                            <div style="font-weight:800; font-size:1rem;">${esc(c.name)}</div>
+                            <div class="mono" style="font-size:0.65rem; color:var(--text-muted);">${esc(String(c.id).split('-')[0])}…</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <span class="tag ${c.status ? 'tag-green' : 'tag-red'}">${c.status ? 'Active' : 'Disabled'}</span>
+                        <span class="tag ${pctCls}">${used.toFixed(2)} / ${lim === 0 ? '∞' : lim + ' GB'}</span>
+                    </div>
+                </div>
+                <div class="info-row"><span class="k">Live Speed</span><span class="v mono">↓ ${fmtSpeed(sp.down_bps)} / ↑ ${fmtSpeed(sp.up_bps)}</span></div>
+                <div class="info-row"><span class="k">Active Connections</span><span class="v mono">${details.length}</span></div>
+                <div class="info-row"><span class="k">Expiry</span><span class="v">${c.expiry ? new Date(c.expiry).toLocaleString() : 'Never'}</span></div>
+                <div>
+                    <div class="panel-title" style="font-size:0.85rem; margin-bottom:8px;"><i class="fa-solid fa-chart-line text-accent"></i> Speed History <span style="color:var(--text-muted); font-weight:500; font-size:0.68rem; margin-left:2px;">last 2.5 min</span></div>
+                    <div style="border:1px solid var(--border); border-radius: var(--radius-md); height:84px; padding:10px 12px;"><canvas id="client-speed-sparkline"></canvas></div>
+                </div>
+                <div>
+                    <div class="panel-title" style="font-size:0.85rem; margin-bottom:8px;"><i class="fa-solid fa-plug-circle-bolt text-purple"></i> Live Connections</div>
+                    <div style="border:1px solid var(--border); border-radius: var(--radius-md); overflow-y:auto; ${details.length ? 'max-height:240px;' : ''}">${connsHtml}</div>
+                </div>
+                <div>
+                    <div class="panel-title" style="font-size:0.85rem; margin-bottom:8px;"><i class="fa-solid fa-globe text-info"></i> Top Destinations</div>
+                    <div style="border:1px solid var(--border); border-radius: var(--radius-md); overflow-y:auto; ${dests.length ? 'max-height:220px;' : ''}">${destsHtml}</div>
+                </div>`;
+            renderClientSparkline(hist);
+        }
+
+        function renderClientSparkline(hist) {
+            if (clientSparklineChart) { clientSparklineChart.destroy(); clientSparklineChart = null; }
+            const canvas = document.getElementById('client-speed-sparkline');
+            if (!canvas || !window.Chart) return;
+            const accent = (BOOTSTRAP.theme && BOOTSTRAP.theme.accent) || '#8b5cf6';
+            const len = Math.max(hist.down.length, hist.up.length, 2);
+            clientSparklineChart = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: { labels: Array(len).fill(''), datasets: [
+                    { label: 'Download', data: hist.down, borderColor: accent, backgroundColor: accent + '26', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.35 },
+                    { label: 'Upload', data: hist.up, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.12)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.35 }
+                ]},
+                options: {
+                    responsive: true, maintainAspectRatio: false, animation: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#18181b', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+                            titleColor: '#fafafa', bodyColor: '#a1a1aa', padding: 12, cornerRadius: 8,
+                            displayColors: true, boxWidth: 8, boxHeight: 8, usePointStyle: true,
+                            callbacks: { label: (c) => ` ${c.dataset.label}: ${Number(c.parsed.y).toFixed(2)} Mbps` }
+                        }
+                    },
+                    scales: { x: { display: false }, y: { beginAtZero: true, display: false, grid: { display: false } } }
+                }
+            });
+        }
+
+        function showQR(id) {
+            const link = subLinkFor(id);
+            document.getElementById('qr-text').value = link;
+            document.getElementById('qrcode').innerHTML = '';
+            new QRCode(document.getElementById("qrcode"), { text: link, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
+            openModal('modal-qr');
+        }
+
+        
+        
+        
+        let subEntries = [];
+        function populateSubClientSelect() {
+            const sel = document.getElementById('sub-client');
+            if (!sel) return;
+            const prev = sel.value;
+            sel.innerHTML = '<option value="">— Select Client —</option>';
+            appState.clients.forEach(c => sel.innerHTML += `<option value="${esc(c.id)}">${esc(c.name)}</option>`);
+            if (prev && appState.clients.some(c => c.id === prev)) {
+                sel.value = prev;
+            } else if (appState.clients.length > 0) {
+                sel.value = appState.clients[0].id;
+            }
+            if (sel.value !== prev) onSubClientChange();
+        }
+        function onSubClientChange() {
+            const clientId = document.getElementById('sub-client').value;
+            subEntries = (clientId && appState.subs[clientId]) ? JSON.parse(JSON.stringify(appState.subs[clientId])) : [];
+            renderSubEntries();
+            renderSubPreview();
+        }
+        function addSubEntry(type) {
+            const cId = document.getElementById('sub-client').value;
+            if (!cId) return showToast('Select a client first', 'error');
+            let nName = '';
+            if (type === 'proxy') {
+                const pCnt = subEntries.filter(e => e.type === 'proxy').length;
+                nName = `V2Leafy ${pCnt + 1}`;
+            } else {
+                nName = 'V2Leafy %data-used%GB / %data-total%GB';
+            }
+            subEntries.push({ id: genUUID(), type: type, transport: 'ws', name: nName, ipAddress: '' });
+            renderSubEntries();
+            renderSubPreview();
+        }
+        function removeSubEntry(id) {
+            subEntries = subEntries.filter(e => e.id !== id);
+            renderSubEntries();
+            renderSubPreview();
+        }
+        function updateSubEntry(id, field, value) {
+            const entry = subEntries.find(e => e.id === id);
+            if (entry) entry[field] = value;
+            renderSubPreview();
+        }
+        function renderSubEntries() {
+            const list = document.getElementById('sub-entries-list');
+            const count = document.getElementById('sub-entry-count');
+            if (!list) return;
+            if (subEntries.length === 0) {
+                list.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:30px 0;">Select a client and click <strong>+ Proxy</strong> or <strong>Info</strong>.</div>';
+                if (count) count.innerText = '0';
+                return;
+            }
+            if (count) count.innerText = String(subEntries.length);
+            let html = '';
+            subEntries.forEach((entry, idx) => {
+                html += `<div class="sub-entry" data-entry-id="${esc(entry.id)}" style="--i:${idx}">
+                    <div class="sub-entry-controls">
+                        <button class="btn-icon" title="Move up" data-action="moveSubEntry" data-id="${esc(entry.id)}" data-action-arg="-1" ${idx === 0 ? 'disabled' : ''}><i class="fa-solid fa-chevron-up"></i></button>
+                        <button class="btn-icon" title="Move down" data-action="moveSubEntry" data-id="${esc(entry.id)}" data-action-arg="1" ${idx === subEntries.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-down"></i></button>
+                    </div>
+                    <div class="sub-entry-body">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="sub-entry-type" style="color:${entry.type === 'proxy' ? 'var(--accent)' : 'var(--info)'}">${esc(entry.type.toUpperCase())}</span>
+                            <i class="fa-solid fa-times" style="cursor:pointer; color:var(--danger); padding:4px;" data-action="removeSubEntry" data-id="${esc(entry.id)}"></i>
+                        </div>
+                        <input type="text" class="form-control" style="padding:8px 12px; font-size:0.8rem;" value="${esc(entry.name)}" data-input="updateSubEntryName" data-entry-id="${esc(entry.id)}">
+                        ${entry.type === 'proxy'
+                            ? `<div style="display:flex; gap:10px; margin-top:4px;">
+                                   <input type="text" class="form-control" style="flex:1; padding:8px 12px; font-size:0.8rem;" placeholder="IP / hostname (blank = default)" value="${esc(entry.ipAddress || '')}" data-input="updateSubEntryIp" data-entry-id="${esc(entry.id)}">
+                                   <span class="tag tag-green" style="align-self:center;">WEBSOCKET</span>
+                               </div>`
+                            : ''}
+                    </div>
+                </div>`;
+            });
+            list.innerHTML = html;
+        }
+        function resolvePlaceholders(text, client) {
+            if (!text) return '';
+            const used = client ? (client.usage || 0) : 0;
+            const lim = client ? (client.limit || 0) : 0;
+            return String(text)
+                .replace(/%client-name%/g, client ? client.name : '')
+                .replace(/%data-used%/g, used.toFixed(2))
+                .replace(/%data-total%/g, lim > 0 ? lim.toFixed(2) : '∞')
+                .replace(/%data-remain%/g, lim > 0 ? Math.max(0, lim - used).toFixed(2) : '∞')
+                .replace(/%expiry-date%/g, client && client.expiry ? new Date(client.expiry).toLocaleDateString() : 'Never');
+        }
+        function renderSubPreview() {
+            const list = document.getElementById('phone-config-list');
+            if (!list) return;
+            const cId = document.getElementById('sub-client').value;
+            const client = appState.clients.find(c => c.id === cId);
+            if (subEntries.length === 0) {
+                list.innerHTML = '<div style="color:#52525b; font-size:0.75rem; text-align:center; padding:30px 0;">No configs yet</div>';
+                return;
+            }
+            let html = '';
+            subEntries.forEach(entry => {
+                const icon = entry.type === 'proxy' ? '<i class="fa-solid fa-shield-halved" style="color:var(--accent)"></i>' : '<i class="fa-solid fa-circle-info" style="color:var(--info)"></i>';
+                const sub = entry.type === 'proxy' ? (entry.ipAddress || 'Auto IP') + ' • WEBSOCKET' : 'Info';
+                const title = resolvePlaceholders(entry.name, client);
+                html += `<div class="phone-item ${entry.type === 'info' ? 'info-item' : ''}" data-entry-id="${esc(entry.id)}">
+                    <div class="phone-item-icon">${icon}</div>
+                    <div class="phone-item-body">
+                        <div class="phone-item-name">${esc(title)}</div>
+                        <div class="phone-item-sub">${esc(sub)}</div>
+                    </div>
+                    <div class="phone-item-action">
+                        <button class="btn btn-icon" style="width:28px; height:28px; padding:0;" data-action="copySingleEntry" data-id="${esc(entry.id)}"><i class="fa-solid fa-copy" style="font-size:0.7rem;"></i></button>
+                    </div>
+                </div>`;
+            });
+            list.innerHTML = html;
+        }
+        async function copySingleEntry(entryId) {
+            const entry = subEntries.find(e => e.id === entryId);
+            if (!entry) return;
+            const cId = document.getElementById('sub-client').value;
+            const client = appState.clients.find(c => c.id === cId);
+            if (!client) return;
+            
+            
+            const params = new URLSearchParams({
+                client: cId,
+                name: entry.name || '',
+                type: entry.type === 'info' ? 'info' : 'proxy',
+                ip: entry.ipAddress || '',
+            });
+            try {
+                const res = await fetch('/api/sub-link?' + params.toString());
+                const data = await res.json();
+                if (!data.ok || !data.link) throw new Error(data.detail || 'Could not build link');
+                copyToClipboard(data.link);
+                showToast('Config copied!', 'success');
+            } catch (e) {
+                showToast('Copy failed: ' + e.message, 'error');
+            }
+        }
+        
+        function moveSubEntry(id, delta) {
+            const from = subEntries.findIndex(e => e.id === id);
+            if (from === -1) return;
+            const to = from + delta;
+            if (to < 0 || to >= subEntries.length) return;
+            const [moved] = subEntries.splice(from, 1);
+            subEntries.splice(to, 0, moved);
+            renderSubEntries();
+            renderSubPreview();
+        }
+
+        async function saveSubscriptionForClient() {
+            const clientId = document.getElementById('sub-client').value;
+            if (!clientId) return showToast('Select a client first', 'error');
+            try {
+                const res = await fetch('/api/state', {
+                    method: 'PUT', headers: csrfHeaders(),
+                    body: JSON.stringify({ state: { subClientSubscriptions: Object.assign({}, appState.subs, { [clientId]: subEntries }) }, reason: 'saveSub' })
+                });
+                if (res.status === 401) { showAuthRequired(); return; }
+                const data = await res.json();
+                if (!data.ok) throw new Error(data.error || 'save failed');
+                showToast('Subscription configuration saved & synced!', 'success');
+            } catch (e) {
+                showToast('Save failed: ' + e.message, 'error');
+            }
+        }
+
+        
+        
+        
+        
+        async function gatewayAction(action) {
+            if (action === 'clear_logs') {
+                // Server wipes its console store on clear; drop our local mirror too so
+                // stale lines don't linger until the next reconnect. The server's
+                // 'Console logs cleared' log_entry then appends onto a clean slate.
+                appState.logs = [];
+                renderLogs();
+            }
+            try {
+                const res = await fetch('/api/action', {
+                    method: 'POST', headers: csrfHeaders(), body: JSON.stringify({ action })
+                });
+                if (res.status === 401) { showAuthRequired(); return; }
+                const data = await res.json();
+                if (!data.ok) throw new Error(data.error || 'command failed');
+                if (action !== 'clear_logs') showToast(`Gateway ${action} executed`, 'success');
+            } catch (e) { showToast('Command failed: ' + e.message, 'error'); }
+        }
+
+        
+        
+        
+        function filterLogs() {
+            const term = document.getElementById('log-output');
+            if (!term) return;
+            const search = (document.getElementById('log-search')?.value || '').toLowerCase();
+            term.innerHTML = '';
+            appState.logs.forEach(line => {
+                if (search && !line.toLowerCase().includes(search)) return;
+                let color = 'var(--text-main)';
+                const lower = line.toLowerCase();
+                if (lower.includes('[warn]') || lower.includes('warning')) color = 'var(--warning)';
+                if (lower.includes('[error]')) color = 'var(--danger)';
+                if (lower.includes('[info]') || lower.includes('started') || lower.includes('listening')) color = 'var(--accent)';
+                const row = document.createElement('div');
+                row.style.cssText = `color:${color}; margin-bottom:6px;`;
+                row.innerText = line;
+                term.appendChild(row);
+            });
+            const autoScroll = document.getElementById('log-autoscroll');
+            if (!autoScroll || autoScroll.checked) term.scrollTop = term.scrollHeight;
+        }
+        function renderLogs() { filterLogs(); }
+
+        
+        
+        
+        function setAuthError(msg) {
+            const el = document.getElementById('auth-error');
+            if (!el) return;
+            if (msg) { el.textContent = msg; el.style.display = 'block'; }
+            else { el.textContent = ''; el.style.display = 'none'; }
+        }
+
+        function renderSetupForm() {
+            setAuthError('');
+            const overlay = document.getElementById('auth-overlay');
+            overlay.style.display = 'flex';
+            document.getElementById('auth-title').innerHTML = '<i class="fa-solid fa-key text-accent"></i> Setup Password';
+            document.getElementById('auth-body').innerHTML = `
+                <p style="color:var(--text-muted); font-size:0.85rem; text-align:center; margin-bottom:20px;">Welcome to ${esc(BOOTSTRAP.platform ? BOOTSTRAP.platform.name : 'V2Leafy')}. Please create a secure password to continue.</p>
+                <div class="form-group"><label class="form-label">New Password</label><input type="password" class="form-control" id="new-pass-input" placeholder="Enter password..."></div>
+                <div class="form-group" style="margin-top:8px;"><label class="form-label">Confirm Password</label><input type="password" class="form-control" id="confirm-pass-input" placeholder="Confirm password..."></div>
+                <button class="btn btn-primary" style="width:100%; margin-top:20px;" data-action="setupPassword"><i class="fa-solid fa-arrow-right"></i> Save & Continue</button>`;
+        }
+        function renderLoginForm() {
+            setAuthError('');
+            const overlay = document.getElementById('auth-overlay');
+            overlay.style.display = 'flex';
+            document.getElementById('auth-title').innerHTML = '<i class="fa-solid fa-lock text-accent"></i> Authentication Required';
+            document.getElementById('auth-body').innerHTML = `
+                <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-control" id="pass-input" placeholder="Enter password..."></div>
+                <button class="btn btn-primary" style="width:100%; margin-top:20px;" data-action="doLogin"><i class="fa-solid fa-arrow-right-to-bracket"></i> Login</button>`;
+        }
+        window.setupPassword = function() {
+            const p1 = document.getElementById('new-pass-input')?.value;
+            const p2 = document.getElementById('confirm-pass-input')?.value;
+            setAuthError('');
+            if (!p1) return setAuthError('Password cannot be empty');
+            if (p1.length < 4) return setAuthError('Password must be at least 4 characters');
+            if (p1 !== p2) return setAuthError('Passwords do not match');
+            fetch('/api/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pass: p1 }) })
+                .then(async r => {
+                    let d = null;
+                    try { d = await r.json(); } catch (e) {}
+                    if (r.ok && d && d.ok) {
+                        showToast('Password setup successful!', 'success');
+                        setTimeout(() => location.reload(), 400);
+                        return;
+                    }
+                    if (r.status === 429) setAuthError('Too many attempts. Wait about a minute and try again.');
+                    else if (r.status === 403) setAuthError('Request was rejected (origin check). Refresh the page and try again.');
+                    else setAuthError((d && (d.detail || d.error)) || ('Server error (' + r.status + ')'));
+                })
+                .catch(() => setAuthError('Network error — check your connection and try again.'));
+        };
+        window.doLogin = function() {
+            const p = document.getElementById('pass-input')?.value;
+            setAuthError('');
+            if (!p) return setAuthError('Please enter a password');
+            fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pass: p }) })
+                .then(async r => {
+                    let d = null;
+                    try { d = await r.json(); } catch (e) {}
+                    if (r.ok && d && d.ok) {
+                        showToast('Login successful!', 'success');
+                        setTimeout(() => location.reload(), 400);
+                        return;
+                    }
+                    if (r.status === 429) setAuthError('Too many login attempts. Wait about a minute and try again.');
+                    else if (r.status === 401) setAuthError('Incorrect password. Check your password and try again.');
+                    else if (r.status === 403) setAuthError('Request was rejected (origin check). Refresh the page and try again.');
+                    else setAuthError((d && (d.detail || d.error)) || ('Server error (' + r.status + ')'));
+                })
+                .catch(() => setAuthError('Network error — check your connection and try again.'));
+        };
+        function doLogout(e) {
+            if (e) e.preventDefault();
+            fetch('/api/logout', { method: 'POST', headers: csrfHeaders() }).finally(() => location.reload());
+        }
+
+        
+        
+        
+        function hideLoader() {
+            const loader = document.getElementById('loader');
+            if (!loader || loader.dataset.hidden === '1') return;
+            loader.dataset.hidden = '1';
+            loader.style.opacity = '0';
+            setTimeout(function() { loader.style.visibility = 'hidden'; }, 300);
+        }
+
+        
+        
+        
+        window.addEventListener('DOMContentLoaded', function() {
+            applyBootstrap(BOOTSTRAP.platform);
+            applyTheme(BOOTSTRAP.theme);
+
+            if (!passSetup) {
+                renderSetupForm();
+            } else if (!loggedIn) {
+                renderLoginForm();
+            } else {
+                document.getElementById('auth-overlay').style.display = 'none';
+            }
+
+            if (window.innerWidth <= 1024) document.getElementById('main-topbar').classList.remove('hidden');
+
+            setTimeout(function() {
+                try { ensureCharts(); } catch (e) {  }
+                filterLogs();
+                if (loggedIn && passSetup) {
+                    connectWs();
+                    
+                    setTimeout(hideLoader, 12000);
+                } else {
+                    
+                    hideLoader();
+                }
+            }, 200);
+        });
+    </script>
+</body>
+</html>

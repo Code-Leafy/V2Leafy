@@ -1,0 +1,10 @@
+# Normalize line endings: store all text as LF regardless of platform.
+* text=auto eol=lf
+
+# Binary assets must never be treated as text.
+*.woff2 binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
