@@ -30,7 +30,10 @@ RUN python3 -m venv /opt/leafy-venv \
         fastapi==0.141.1 \
         "uvicorn[standard]==0.52.4" \
         httpx==0.28.1 \
-        psutil==7.2.2
+        psutil==7.2.2 \
+        brotlicffi==1.2.1.0 \
+        orjson==3.13.0 \
+        prometheus_client==0.26.0
 
 ENV PATH="/opt/leafy-venv/bin:$PATH" \
     VIRTUAL_ENV=/opt/leafy-venv
