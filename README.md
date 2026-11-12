@@ -10,6 +10,8 @@ A sleek **web dashboard** for managing a FastAPI-powered VLESS WebSocket gateway
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Platform](https://img.shields.io/badge/Railway%20%7C%20Codespaces-2DC94E?style=flat-square)](https://railway.com)
 
+<a href="https://railway.com/new/template?template=https://github.com/Code-Leafy/V2Leafy"><img src="https://railway.com/button.svg" alt="Deploy on Railway" height="36"></a>
+
 </div>
 
 ---
@@ -88,6 +90,14 @@ Run the same FastAPI application on Railway or GitHub Codespaces. The dashboard 
 ### 1. Railway (GitHub Deployment)
 
 *No local installation required.*
+
+#### Option A — One-Click Deploy
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/template?template=https://github.com/Code-Leafy/V2Leafy)
+
+Click the button, confirm the repository on Railway, and press **Deploy**. `railway.json` supplies the start command and generates `SECRET_KEY` automatically. Once the deployment is running, open **Settings → Networking → Generate Domain** and browse the dashboard via that HTTPS URL — generated VLESS links follow the domain automatically.
+
+#### Option B — NetLeafy guided setup
 
 > **⭐ Recommended — quick setup:** visit **[NetLeafy](https://code-leafy.github.io/NetLeafy)** and follow its on-screen instructions to deploy V2Leafy on Railway in minutes. The manual steps below achieve the same result.
 
