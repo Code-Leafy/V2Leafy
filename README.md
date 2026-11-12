@@ -103,7 +103,7 @@ Run the same FastAPI application on Railway or GitHub Codespaces. The dashboard 
 
 > Railway automatically provides `PORT`. V2Leafy listens on `0.0.0.0` and uses that assigned port. Do not hard-code a production port.
 
-> **Note — redeploy after a domain change:** when you generate or change your domain in **Settings → Networking**, trigger a redeploy (**Deployments → Redeploy**) so V2Leafy picks up the new domain in generated links and subscriptions.
+> **Note — domain changes:** generated VLESS links and subscriptions follow the domain you browse the dashboard from (via standard `Host`/`X-Forwarded-*` proxy headers). After generating or changing your domain in **Settings → Networking**, simply reopen the dashboard via the new domain — no redeploy is required for link generation.
 
 > **Tip — server region:** you can change the Railway **region** your service runs in from the service's **Settings** page. Changing the region also triggers a redeploy.
 

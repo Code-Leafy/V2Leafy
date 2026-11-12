@@ -15,7 +15,7 @@ import struct
 import time
 import uuid as _uuid
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
@@ -301,6 +301,86 @@ def build_platform_context(platform: Optional[Platform] = None) -> PlatformConte
 
 
 PLATFORM_CTX = build_platform_context()
+
+# Hosts that must never appear in a link handed to a remote VLESS client.
+_LOOPBACK_HOSTS = ("localhost", "127.0.0.1", "::1")
+_DOMAIN_WARNING_EMITTED = False
+
+
+def _sanitized_public_host(raw_host: str) -> str:
+    """Validate a Host/X-Forwarded-Host header value and return the hostname.
+
+    Rejects loopback addresses, over-long values, and malformed input so a
+    poisoned proxy header can never end up inside a generated client link.
+    """
+    raw = (raw_host or "").strip().lower()
+    if not raw or len(raw) > 253:
+        return ""
+    try:
+        host = (urlparse(f"//{raw}").hostname or "").strip("[]").lower()
+    except ValueError:
+        return ""
+    if not host or host in _LOOPBACK_HOSTS or host.endswith(".localhost"):
+        return ""
+    is_ipv6 = ":" in host and all(c in "0123456789abcdef:" for c in host)
+    if is_ipv6 or FQDN_RE.match(host):
+        return host
+    return ""
+
+
+def _forwarded_base_url(request: Request) -> str:
+    """Derive the externally visible base URL from reverse-proxy headers.
+
+    Railway's edge (like Codespaces and most reverse proxies) forwards the
+    original public hostname and scheme on every request, so generated links
+    stay correct even when RAILWAY_PUBLIC_DOMAIN is missing, stale, or the
+    domain was changed without a redeploy.
+    """
+    forwarded_host = request.headers.get("x-forwarded-host", "")
+    raw_host = forwarded_host.split(",")[0].strip() or request.headers.get("host", "").strip()
+    host = _sanitized_public_host(raw_host)
+    if not host:
+        return ""
+    scheme = request.headers.get("x-forwarded-proto", "")
+    scheme = scheme.split(",")[0].strip().lower() or (request.url.scheme or "http")
+    if scheme not in ("http", "https"):
+        scheme = "http"
+    suffix = ""
+    if scheme == "http":
+        port = request.headers.get("x-forwarded-port", "").split(",")[0].strip()
+        if port.isdigit() and int(port) != 80:
+            suffix = f":{port}"
+    return f"{scheme}://{host}{suffix}"
+
+
+def request_public_context(request: Optional[Request]) -> PlatformContext:
+    """Effective platform context for the current request.
+
+    Starts from the import-time PLATFORM_CTX and upgrades public_base_url with
+    the host/scheme actually seen on the request, so VLESS links, subscription
+    URLs, and the dashboard bootstrap always point at the domain the user is
+    really browsing — not at whatever was in the environment at start-up.
+    """
+    ctx = PLATFORM_CTX
+    if request is None:
+        return ctx
+    derived = _forwarded_base_url(request)
+    if not derived or derived == ctx.public_base_url:
+        return ctx
+    return replace(ctx, public_base_url=derived)
+
+
+def warn_missing_public_domain(ctx: PlatformContext) -> None:
+    """Log once when hosted links would be generated with a loopback host."""
+    global _DOMAIN_WARNING_EMITTED
+    if public_host(ctx) in _LOOPBACK_HOSTS and not _DOMAIN_WARNING_EMITTED:
+        _DOMAIN_WARNING_EMITTED = True
+        add_log(
+            "Public domain not detected — generated VLESS links currently use a "
+            "loopback host and will not work remotely. Open the dashboard via the "
+            "host's public URL (Railway: Settings → Networking → Generate Domain) "
+            "and links will self-correct from request headers."
+        )
 
 
 
@@ -827,7 +907,11 @@ def generate_vless_link(
         host = host.rsplit(":", 1)[0]
 
     tls = use_tls(ctx)
-    port = 443 if tls else ctx.bind_port
+    # Honour an explicit port in the public base URL (non-standard HTTPS ports
+    # behind a proxy); otherwise TLS terminates on 443 and plain HTTP uses the
+    # host-assigned bind port.
+    base_port = urlparse(ctx.public_base_url).port
+    port = base_port or (443 if tls else ctx.bind_port)
     path = f"/ws/{client_id}?token={ws_token}" if ws_token else f"/ws/{client_id}"
 
     params = {"encryption": "none"}
@@ -922,11 +1006,14 @@ async def cached_client_sub_links(
 ) -> list[str]:
     
     now = time.time()
-    cached = SUB_LINK_CACHE.get(client.id)
+    # Cache key includes the public host so a domain change (Railway redeploy,
+    # new generated domain) immediately serves fresh links instead of stale ones.
+    cache_key = f"{client.id}@{public_host(ctx)}"
+    cached = SUB_LINK_CACHE.get(cache_key)
     if cached and now - cached[0] < SUB_CACHE_TTL:
         return cached[1]
     links = build_client_sub_links(state, client, ctx)
-    SUB_LINK_CACHE[client.id] = (now, links)
+    SUB_LINK_CACHE[cache_key] = (now, links)
     return links
 
 
@@ -1819,7 +1906,9 @@ def serve_index_html(request: Request) -> HTMLResponse:
     token = request.cookies.get(SESSION_COOKIE)
     is_auth = session_valid_sync(token)
 
-    ctx = PLATFORM_CTX
+    # Request-derived context keeps the bootstrap publicBaseUrl correct on
+    # Railway/Codespaces even when RAILWAY_PUBLIC_DOMAIN was absent at start-up.
+    ctx = request_public_context(request)
     theme = ctx.theme
     content = get_raw_index_html()
     content = content.replace("{{PASS_SETUP}}", "true" if STATE_MGR.state.auth.pass_setup else "false")
@@ -2004,15 +2093,16 @@ async def metrics_endpoint():
 
 
 @app.get("/api/state")
-async def get_panel_state(_=Depends(require_auth)):
+async def get_panel_state(request: Request, _=Depends(require_auth)):
+    ctx = request_public_context(request)
     return {
         "ok": True,
         "state": STATE_MGR.snapshot(),
-        "platform": platform_payload(),
+        "platform": platform_payload(ctx),
         "telemetry": await telemetry_snapshot(),
         "gateway": gateway["status"],
-        "portDomain": public_host(),
-        "webDomain": public_host(),
+        "portDomain": public_host(ctx),
+        "webDomain": public_host(ctx),
         "logs": "\n".join(console_logs),
         "uptime30d": uptime_30d_pct(),
     }
@@ -2096,16 +2186,18 @@ async def update_panel_state(request: Request, _=Depends(require_csrf)):
 
 
 @app.get("/api/config")
-async def get_gateway_config(_=Depends(require_auth)):
+async def get_gateway_config(request: Request, _=Depends(require_auth)):
+    ctx = request_public_context(request)
+    warn_missing_public_domain(ctx)
     return {
         "ok": True,
         "config": {
             "transport": "WebSocket",
             "protocol": "VLESS",
             "path": "/ws/{client_id}",
-            "publicUrl": PLATFORM_CTX.public_base_url,
-            "tls": use_tls(),
-            "port": PLATFORM_CTX.bind_port,
+            "publicUrl": ctx.public_base_url,
+            "tls": use_tls(ctx),
+            "port": ctx.bind_port,
             "clients": len(STATE_MGR.state.clients),
         },
     }
@@ -2113,6 +2205,7 @@ async def get_gateway_config(_=Depends(require_auth)):
 
 @app.get("/api/sub-link")
 async def get_sub_link(
+    request: Request,
     client: str = "",
     name: str = "V2Leafy Node",
     type: str = "proxy",
@@ -2131,7 +2224,7 @@ async def get_sub_link(
     return {
         "ok": True,
         "link": build_single_sub_entry_link(
-            PLATFORM_CTX, target, entry_type,
+            request_public_context(request), target, entry_type,
             sanitize_text(name, 120, "V2Leafy Node"),
             sanitize_text(ip, 200),
         ),
@@ -2173,7 +2266,8 @@ async def handle_gateway_action(request: Request, body: ActionRequest, _=Depends
 
 
 @app.get("/api/links")
-async def list_links(_=Depends(require_auth)):
+async def list_links(request: Request, _=Depends(require_auth)):
+    ctx = request_public_context(request)
     res = []
     for c in STATE_MGR.state.clients:
         res.append({
@@ -2191,7 +2285,7 @@ async def list_links(_=Depends(require_auth)):
             "billing_cycle": c.billing_cycle,
             "next_reset_date": c.next_reset_date,
             "vless_link": generate_vless_link(
-                c.id, remark=f"V2Leafy-{c.name}", ws_token=c.ws_token
+                c.id, remark=f"V2Leafy-{c.name}", ctx=ctx, ws_token=c.ws_token
             ),
         })
     return {"links": res}
@@ -2229,10 +2323,14 @@ async def create_link_api(request: Request, body: ClientCreateRequest, _=Depends
         invalidate_sub_cache()
     add_log(f"Created client '{client.name}' ({cid})")
     await broadcast_state_changed("createClient")
+    ctx = request_public_context(request)
+    warn_missing_public_domain(ctx)
     return {
         "ok": True,
         "uuid": cid,
-        "link": generate_vless_link(cid, remark=f"V2Leafy-{client.name}", ws_token=client.ws_token),
+        "link": generate_vless_link(
+            cid, remark=f"V2Leafy-{client.name}", ctx=ctx, ws_token=client.ws_token
+        ),
     }
 
 
@@ -2313,16 +2411,18 @@ async def regenerate_sub_slug(uid: str, _=Depends(require_csrf)):
 
 
 @app.get("/api/links/{uid}/sub")
-async def get_single_link_subscription(uid: str, _=Depends(require_auth)):
+async def get_single_link_subscription(uid: str, request: Request, _=Depends(require_auth)):
     uid = require_valid_uuid(uid)
     client = next((c for c in STATE_MGR.state.clients if c.id == uid), None)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    ctx = request_public_context(request)
+    warn_missing_public_domain(ctx)
     return {
         "ok": True,
-        "subscription_url": f"{PLATFORM_CTX.public_base_url}/sub/{client.sub_slug or client.id}",
+        "subscription_url": f"{ctx.public_base_url}/sub/{client.sub_slug or client.id}",
         "config": generate_vless_link(
-            client.id, remark=f"V2Leafy-{client.name}", ws_token=client.ws_token
+            client.id, remark=f"V2Leafy-{client.name}", ctx=ctx, ws_token=client.ws_token
         ),
         "label": client.name,
         "used_bytes": client.used_bytes,
@@ -2334,14 +2434,15 @@ async def get_single_link_subscription(uid: str, _=Depends(require_auth)):
 
 
 @app.get("/api/sub/link/{client_id}")
-async def get_subscription_link_url(client_id: str):
+async def get_subscription_link_url(client_id: str, request: Request):
     client_id = require_valid_uuid(client_id)
     client = next((c for c in STATE_MGR.state.clients if c.id == client_id), None)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    ctx = request_public_context(request)
     return {
         "ok": True,
-        "link": f"{PLATFORM_CTX.public_base_url}/sub/{client.sub_slug or client.id}",
+        "link": f"{ctx.public_base_url}/sub/{client.sub_slug or client.id}",
     }
 
 
@@ -2548,7 +2649,9 @@ async def public_subscription_endpoint(encoded_id: str, request: Request):
     if not client.status:
         raise HTTPException(status_code=403, detail="Subscription disabled")
 
-    sub_links = await cached_client_sub_links(STATE_MGR.state, client)
+    ctx = request_public_context(request)
+    warn_missing_public_domain(ctx)
+    sub_links = await cached_client_sub_links(STATE_MGR.state, client, ctx)
     sub_content = "\r\n".join(sub_links) + "\r\n"
     encoded_payload = base64.b64encode(sub_content.encode("utf-8")).decode("ascii")
 
