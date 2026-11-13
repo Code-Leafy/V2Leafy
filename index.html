@@ -551,7 +551,7 @@
                                     <div style="display:flex; justify-content:space-between; align-items:center;"><span style="color:var(--text-muted); font-weight:600; font-size:0.85rem;">Disk</span><span class="mono" id="dash-disk">0%</span></div>
                                     <div class="uptime-bar"><div class="uptime-fill" id="disk-bar-fill" style="width:0%"></div></div>
                                 </div>
-                                <div>
+                                <div id="dash-uptime-row">
                                     <div style="display:flex; justify-content:space-between; align-items:center;"><span style="color:var(--text-muted); font-weight:600; font-size:0.85rem;">30-Day Uptime</span><span class="mono" id="dash-uptime">0%</span></div>
                                     <div class="uptime-bar"><div class="uptime-fill" id="uptime-fill" style="width:0%"></div></div>
                                 </div>
@@ -567,7 +567,7 @@
                 <div class="grid-6">
                     <div class="metric-card"><div class="metric-title">Active Connections <i class="fa-solid fa-plug" style="color:var(--info)"></i></div><div class="metric-val mono" id="a-conns">0</div></div>
                     <div class="metric-card"><div class="metric-title">Gateway Uptime <i class="fa-solid fa-clock" style="color:var(--warning)"></i></div><div class="metric-val mono" id="m-uptime">0h 00m</div></div>
-                    <div class="metric-card"><div class="metric-title">30-Day Uptime <i class="fa-solid fa-shield-heart" style="color:var(--success)"></i></div><div class="metric-val mono" id="a-uptime30">0.0%</div></div>
+                    <div class="metric-card" id="a-uptime30-card"><div class="metric-title">30-Day Uptime <i class="fa-solid fa-shield-heart" style="color:var(--success)"></i></div><div class="metric-val mono" id="a-uptime30">0.0%</div></div>
                     <div class="metric-card"><div class="metric-title">Peak Concurrent (24h) <i class="fa-solid fa-arrow-trend-up" style="color:var(--accent)"></i></div><div class="metric-val mono" id="a-peak">0</div></div>
                     <div class="metric-card"><div class="metric-title">Total Clients <i class="fa-solid fa-users" style="color:var(--text-muted)"></i></div><div class="metric-val mono" id="a-total-clients">0</div></div>
                     <div class="metric-card"><div class="metric-title">Active Clients <i class="fa-solid fa-user-check" style="color:var(--success)"></i></div><div class="metric-val mono" id="a-active-clients">0</div></div>
@@ -926,6 +926,19 @@
 
         function applyBootstrap(platform) {
             if (!platform) return;
+            const caps = platform.capabilities || {};
+            window.PLATFORM_CAPS = caps;
+            // Hide features the running platform cannot support:
+            // - historicalMetrics=false (memory-only persistence, e.g. Railway):
+            //   30-day uptime resets on every restart, so the metric is noise.
+            //   Everything else (tunnel, subscriptions, clients, logs, system
+            //   health) works on every supported platform and stays visible.
+            if (caps.historicalMetrics === false) {
+                const dashRow = document.getElementById('dash-uptime-row');
+                if (dashRow) dashRow.style.display = 'none';
+                const card = document.getElementById('a-uptime30-card');
+                if (card) card.style.display = 'none';
+            }
         }
 
         

@@ -165,6 +165,53 @@ def test_subscription_endpoint_end_to_end():
         main.app.dependency_overrides.pop(main.require_csrf, None)
 
 
+def test_platform_capabilities_match_platform():
+    """Capabilities must match reality: Railway blocks UDP egress and has no
+    persistent state; Codespaces supports both."""
+    railway = main.capabilities_for(main.Platform.RAILWAY)
+    check("railway: no udp forwarding", railway.udp_forwarding is False)
+    check("railway: no historical metrics", railway.historical_metrics is False)
+    check("railway: no persistent storage", railway.persistent_storage is False)
+
+    codespaces = main.capabilities_for(main.Platform.CODESPACES)
+    check("codespaces: udp forwarding ok", codespaces.udp_forwarding is True)
+    check("codespaces: historical metrics ok", codespaces.historical_metrics is True)
+    check("codespaces: persistent storage ok", codespaces.persistent_storage is True)
+
+    local = main.capabilities_for(main.Platform.LOCAL)
+    check("local: udp forwarding ok", local.udp_forwarding is True)
+    check("local: historical metrics ok", local.historical_metrics is True)
+
+
+def test_platform_payload_exposes_capabilities():
+    payload = main.platform_payload()
+    caps = payload["capabilities"]
+    check("payload has udpForwarding", "udpForwarding" in caps)
+    check("payload has historicalMetrics", "historicalMetrics" in caps)
+    check("payload has persistentStorage", "persistentStorage" in caps)
+
+
+def test_udp_force_disabled_on_railway():
+    """UDP_FORWARDING=1 must not enable UDP on Railway (edge blocks it)."""
+    old = os.environ.get("UDP_FORWARDING")
+    old_dom = os.environ.get("RAILWAY_ENVIRONMENT_ID")
+    os.environ["UDP_FORWARDING"] = "1"
+    os.environ["RAILWAY_ENVIRONMENT_ID"] = "test-env"
+    try:
+        ctx = main.build_platform_context(main.Platform.RAILWAY)
+        effective = main.UDP_FORWARDING_REQUESTED and ctx.capabilities.udp_forwarding
+        check("railway + UDP env -> still disabled", effective is False)
+    finally:
+        if old is None:
+            os.environ.pop("UDP_FORWARDING", None)
+        else:
+            os.environ["UDP_FORWARDING"] = old
+        if old_dom is None:
+            os.environ.pop("RAILWAY_ENVIRONMENT_ID", None)
+        else:
+            os.environ["RAILWAY_ENVIRONMENT_ID"] = old_dom
+
+
 if __name__ == "__main__":
     print("== request-derived public context ==")
     test_local_context_unchanged()
@@ -173,6 +220,10 @@ if __name__ == "__main__":
     test_plain_http_port_preserved()
     test_path_token_encoding()
     test_env_domain_still_honored()
+    print("== platform capability gating ==")
+    test_platform_capabilities_match_platform()
+    test_platform_payload_exposes_capabilities()
+    test_udp_force_disabled_on_railway()
     print("== end-to-end API round trip ==")
     test_subscription_endpoint_end_to_end()
     print(f"\n{PASSED} passed, {FAILED} failed")

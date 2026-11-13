@@ -124,7 +124,7 @@ CONN_POOL_MAX = 16
 DNS_CACHE_TTL = 120.0
 DNS_CACHE_MAX = 512
 DNS_CONNECT_ATTEMPTS = 3
-UDP_FORWARDING_ENABLED = os.environ.get("UDP_FORWARDING", "0") == "1"
+UDP_FORWARDING_REQUESTED = os.environ.get("UDP_FORWARDING", "0") == "1"
 PADDING_MAX = int(os.environ.get("HANDSHAKE_PADDING_MAX", "0"))    
 
 SUB_CACHE_TTL = 30.0
@@ -242,16 +242,29 @@ UNKNOWN_THEME = RAILWAY_THEME
 class PlatformCapabilities:
     websocket_gateway: bool = True
     subscription_links: bool = True
-    relay_tools: bool = False            
+    relay_tools: bool = False
     persistent_storage: bool = False
     codespaces_metadata: bool = False
+    # Railway's edge proxy does not forward outbound UDP, so VLESS command-2
+    # (UDP) tunnels can never complete there — the panel/API must not offer it.
+    udp_forwarding: bool = True
+    # Day-history metrics (30-day uptime) only mean something when state
+    # survives restarts; memory-only persistence (Railway) resets them.
+    historical_metrics: bool = True
 
 
 def capabilities_for(platform: Platform) -> PlatformCapabilities:
     if platform is Platform.CODESPACES:
-        return PlatformCapabilities(persistent_storage=True, codespaces_metadata=True)
+        return PlatformCapabilities(
+            persistent_storage=True, codespaces_metadata=True,
+            udp_forwarding=True, historical_metrics=True,
+        )
     if platform is Platform.RAILWAY:
-        return PlatformCapabilities(persistent_storage=False)
+        return PlatformCapabilities(
+            persistent_storage=False,
+            udp_forwarding=False,      # edge proxy blocks UDP egress
+            historical_metrics=False,  # memory persistence resets on restart
+        )
     return PlatformCapabilities(persistent_storage=True)
 
 
@@ -312,6 +325,11 @@ def build_platform_context(platform: Optional[Platform] = None) -> PlatformConte
 
 
 PLATFORM_CTX = build_platform_context()
+
+# Effective UDP support: requested via env AND actually possible on this
+# platform. On Railway the edge proxy cannot forward UDP egress, so VLESS
+# command-2 tunnels are force-disabled regardless of the env var.
+UDP_FORWARDING_ENABLED = UDP_FORWARDING_REQUESTED and PLATFORM_CTX.capabilities.udp_forwarding
 
 # Hosts that must never appear in a link handed to a remote VLESS client.
 _LOOPBACK_HOSTS = ("localhost", "127.0.0.1", "::1")
@@ -1095,7 +1113,12 @@ _MEM_LIMIT_CACHE: Optional[float] = None
 
 
 def container_memory_limit_mb() -> float:
-    
+    """Container memory limit in MB, falling back to total system memory.
+
+    Reads the cgroup limit (v2 then v1) as used on Railway/containers. When no
+    limit is exposed, total physical memory is used so the panel never shows a
+    meaningless "0 / 0 MB" and MEMORY_WATCHDOG_PCT keeps a sane baseline.
+    """
     global _MEM_LIMIT_CACHE
     if _MEM_LIMIT_CACHE is not None:
         return _MEM_LIMIT_CACHE
@@ -1114,7 +1137,11 @@ def container_memory_limit_mb() -> float:
                 return _MEM_LIMIT_CACHE
         except (OSError, ValueError):
             continue
-    _MEM_LIMIT_CACHE = 0.0
+    try:
+        import psutil as _ps
+        _MEM_LIMIT_CACHE = round(_ps.virtual_memory().total / (1024 * 1024), 0)
+    except Exception:
+        _MEM_LIMIT_CACHE = 0.0
     return _MEM_LIMIT_CACHE
 
 
@@ -1668,6 +1695,8 @@ def platform_payload(ctx: Optional[PlatformContext] = None) -> dict:
             "relayTools": ctx.capabilities.relay_tools,
             "persistentStorage": ctx.capabilities.persistent_storage,
             "codespacesMetadata": ctx.capabilities.codespaces_metadata,
+            "udpForwarding": ctx.capabilities.udp_forwarding,
+            "historicalMetrics": ctx.capabilities.historical_metrics,
         },
     }
 
@@ -1712,8 +1741,13 @@ async def lifespan(app: FastAPI):
     add_log(f"Platform: {PLATFORM_CTX.display_name} ({PLATFORM_CTX.platform.value})")
     add_log(f"Persistence: {PLATFORM_CTX.persistence_mode}")
     add_log("Transport: VLESS over WebSocket only")
+    if UDP_FORWARDING_REQUESTED and not PLATFORM_CTX.capabilities.udp_forwarding:
+        add_log(
+            "UDP forwarding requested via UDP_FORWARDING=1 but not supported on "
+            f"{PLATFORM_CTX.display_name} (edge proxy blocks UDP egress) — disabled"
+        )
     if UDP_FORWARDING_ENABLED:
-        add_log("UDP forwarding: enabled (note: Railway egress UDP is typically blocked)")
+        add_log("UDP forwarding: enabled (VLESS command 2)")
     if PADDING_MAX > 0:
         add_log(f"Handshake padding: enabled (max {PADDING_MAX} bytes)")
 
