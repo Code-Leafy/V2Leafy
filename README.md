@@ -214,7 +214,7 @@ V2Leafy/
 | `LOG_FORMAT` | `text` | `json` emits structured `{timestamp, level, msg, client_id}` lines for Datadog/Loki/ELK |
 | `LOGIN_RATE_LIMIT` | `5` | Login/setup attempts per minute per IP |
 | `TCP_CONNECT_TIMEOUT` / `TCP_FIRST_BYTE_TIMEOUT` / `TCP_IDLE_TIMEOUT` | `5` / `10` / `300` | Split connection timeouts (s) |
-| `RELAY_QUEUE_MAX` | `8` | Bounded WS send queue (frames) — caps memory on slow readers |
+| `RELAY_QUEUE_MAX` | `32` | Bounded WS send queue (frames, ~64 KB each) — caps memory on slow readers while keeping downloads smooth |
 | `UDP_FORWARDING` | `0` | Enable experimental VLESS UDP forwarding |
 | `HANDSHAKE_PADDING_MAX` | `0` | Legacy `ed`-padding support (see constraints) |
 | `QUOTA_RESET_CYCLE` | `none` | `monthly` or `weekly` billing cycles for auto quota resets |

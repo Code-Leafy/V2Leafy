@@ -107,12 +107,23 @@ TCP_CONNECT_TIMEOUT = float(os.environ.get("TCP_CONNECT_TIMEOUT", "5"))
 TCP_FIRST_BYTE_TIMEOUT = float(os.environ.get("TCP_FIRST_BYTE_TIMEOUT", "10"))
 TCP_IDLE_TIMEOUT = float(os.environ.get("TCP_IDLE_TIMEOUT", "300"))
 WS_HANDSHAKE_TIMEOUT = 15.0
-RELAY_QUEUE_MAX = int(os.environ.get("RELAY_QUEUE_MAX", "8"))       
+# Frames buffered toward a slow WS client before backpressure kicks in. The old
+# default of 8 (~512 KB) made long downloads over slow WS links stall and get
+# killed by RELAY_QUEUE_FULL_TIMEOUT; 32 frames (~2 MB) absorbs TCP bursts while
+# capping memory per connection.
+RELAY_QUEUE_MAX = int(os.environ.get("RELAY_QUEUE_MAX", "32"))
 RELAY_QUEUE_FULL_TIMEOUT = 30.0
 TUNNEL_PING_INTERVAL = 25.0
 
 CONN_POOL_TTL = 30.0
 CONN_POOL_MAX = 16
+
+# Short-lived DNS cache for upstream dials. Every VLESS connection previously
+# did a fresh thread-pool getaddrinfo (50-300 ms); repeat connections to the
+# same destination now reuse the resolution for DNS_CACHE_TTL seconds.
+DNS_CACHE_TTL = 120.0
+DNS_CACHE_MAX = 512
+DNS_CONNECT_ATTEMPTS = 3
 UDP_FORWARDING_ENABLED = os.environ.get("UDP_FORWARDING", "0") == "1"
 PADDING_MAX = int(os.environ.get("HANDSHAKE_PADDING_MAX", "0"))    
 
@@ -2952,8 +2963,29 @@ class RelaySender:
             while True:
                 data = await self.queue.get()
                 await self.websocket.send_bytes(data)
+                self.queue.task_done()
+        except asyncio.CancelledError:
+            raise
         except Exception:
+            # The WS send path failed (client gone / transport closed). Mark the
+            # sender dead so both relay tasks stop, and close the socket instead
+            # of leaving the connection to time out idle.
             self.dead = True
+            await _close_ws(self.websocket, 1011, "Relay error")
+
+    async def flush(self, timeout: float = 10.0) -> None:
+        """Wait until every queued frame has been written to the websocket.
+
+        Called before the tunnel closes so a fast upstream that already hit EOF
+        does not have its tail silently dropped while the client is still
+        draining (this used to truncate downloads that finished in a burst).
+        """
+        if self.dead:
+            return
+        try:
+            await asyncio.wait_for(self.queue.join(), timeout)
+        except Exception:
+            pass
 
     async def send(self, data: bytes, first_prefix: bool = False) -> bool:
         if self.dead:
@@ -3152,6 +3184,68 @@ class TcpDialPool:
 
 
 TCP_POOL = TcpDialPool()
+
+_DNS_CACHE: dict[str, tuple[float, list]] = {}
+_DNS_CACHE_LOCK = asyncio.Lock()
+
+
+async def resolve_cached(host: str, port: int) -> list:
+    """Resolve (host, port) with a short-TTL cache.
+
+    Returns a list of (family, type, proto, canonname, sockaddr) tuples as
+    produced by loop.getaddrinfo, ordered as the resolver returned them
+    (IPv6 before IPv4 when both exist). Never raises for cache-only paths —
+    callers must treat an empty result as "no cache, dial by hostname".
+    """
+    key = f"{host}:{port}"
+    now = time.time()
+    async with _DNS_CACHE_LOCK:
+        hit = _DNS_CACHE.get(key)
+        if hit and now - hit[0] < DNS_CACHE_TTL:
+            return hit[1]
+    try:
+        loop = asyncio.get_running_loop()
+        infos = await loop.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except (socket.gaierror, OSError):
+        return []
+    entry = (now, list(infos))
+    async with _DNS_CACHE_LOCK:
+        if len(_DNS_CACHE) >= DNS_CACHE_MAX:
+            _DNS_CACHE.clear()
+        _DNS_CACHE[key] = entry
+    return entry[1]
+
+
+async def dial_upstream(host: str, port: int, timeout: float):
+    """Open a TCP connection to the VLESS target, preferring cached addresses.
+
+    Tries up to DNS_CONNECT_ATTEMPTS resolved addresses (covering both address
+    families when available) and falls back to a plain hostname dial so the
+    behaviour never regresses if resolution info is unavailable.
+    """
+    infos = await resolve_cached(host, port)
+    last_exc: Optional[BaseException] = None
+    if infos:
+        seen: set[tuple] = set()
+        tried = 0
+        for _fam, _typ, _proto, _cname, sockaddr in infos:
+            ip = sockaddr[0]
+            if ip in seen:
+                continue
+            seen.add(ip)
+            if tried >= DNS_CONNECT_ATTEMPTS:
+                break
+            tried += 1
+            try:
+                return await asyncio.wait_for(
+                    asyncio.open_connection(ip, port), timeout=timeout
+                )
+            except (asyncio.TimeoutError, OSError, ConnectionError) as exc:
+                last_exc = exc
+                continue
+    return await asyncio.wait_for(
+        asyncio.open_connection(host, port), timeout=timeout
+    )
 
 
 class UdpRelayProtocol(asyncio.DatagramProtocol):
@@ -3445,9 +3539,8 @@ async def websocket_vless_tunnel(websocket: WebSocket, client_id: str = ""):
                             reader = writer = sock = None
                             continue
                     else:
-                        reader, writer = await asyncio.wait_for(
-                            asyncio.open_connection(header["address"], header["port"]),
-                            timeout=TCP_CONNECT_TIMEOUT,
+                        reader, writer = await dial_upstream(
+                            header["address"], header["port"], TCP_CONNECT_TIMEOUT
                         )
                         try:
                             sock = writer.get_extra_info("socket")
@@ -3555,6 +3648,9 @@ async def websocket_vless_tunnel(websocket: WebSocket, client_id: str = ""):
         for t in extra_tasks:
             t.cancel()
         if sender:
+            # Deliver anything still queued before tearing the tunnel down —
+            # cancelling the sender mid-queue used to truncate the stream tail.
+            await sender.flush()
             sender.stop()
         if writer and conn_info is not None and header is not None:
             try:
